@@ -56,7 +56,6 @@ class Solver(object):
         self.test_loader = None
         self.classes = eval(config.classes)
         self.ratios = eval(config.sub_sample)
-        print(self.classes)
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
 
     @staticmethod
@@ -170,7 +169,9 @@ class Solver(object):
                 # progress_bar(batch_num, len(self.test_loader), 'Loss: %.4f | Acc: %.3f%% (%d/%d)'
                 #              % (test_loss / (batch_num + 1), 100. * test_correct / total, test_correct, total))
 
-                cm += confusion_matrix(y_pred=prediction.view(-1).cpu().numpy(), y_true=target.view(-1).cpu().numpy())
+                y_pred = prediction.view(-1).cpu().numpy().tolist()
+                y_true = target.view(-1).cpu().numpy().tolist()
+                cm += confusion_matrix(y_pred=y_pred, y_true=y_true, labels=list(range(len(self.classes))))
 
         accuracy = test_correct / total
 
