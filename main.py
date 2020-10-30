@@ -137,7 +137,7 @@ class Solver(object):
 
         sample_nums = cm.sum(axis=1)
         hitted_nums = cm.diagonal()
-        precisions = float(hitted_nums) / float(sample_nums)
+        precisions = hitted_nums.as_type(float) / sample_nums.as_type(float)
 
         print('precisisons:')
         pprint(precisions)
