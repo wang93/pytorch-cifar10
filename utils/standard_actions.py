@@ -10,6 +10,7 @@ import torch
 from utils.serialization import Logger
 from pprint import pprint
 
+
 def _random_seed(seed):
     torch.manual_seed(seed)  # cpu
     torch.cuda.manual_seed_all(seed)  # gpu

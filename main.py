@@ -55,13 +55,14 @@ class Solver(object):
         self.train_loader = None
         self.test_loader = None
         self.classes = eval(config.classes)
+        print(self.classes)
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
 
     @staticmethod
     def _sub_data(dataset, classes):
         indices = [i for i, l in enumerate(dataset.targets) if l in classes]
         dataset.data = dataset.data[indices]
-        dataset.targets = [dataset.targets[i] for i in indices]
+        dataset.targets = [classes.index(dataset.targets[i]) for i in indices]
 
     def load_data(self):
         train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
