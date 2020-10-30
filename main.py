@@ -142,7 +142,7 @@ class Solver(object):
         print('precisisons:')
         pprint(precisions)
 
-        print('the worst precision is {.3f}%'.format(min(precisions) * 100))
+        print('the worst precision is {:.3f%}%'.format(min(precisions)))
 
         return test_loss, test_correct / total
 
