@@ -57,7 +57,7 @@ class Solver(object):
         else:
             self.device = torch.device('cpu')
 
-        # self.model = LeNet().to(self.device)
+        self.model = LeNet().to(self.device)
         # self.model = AlexNet().to(self.device)
         # self.model = VGG11().to(self.device)
         # self.model = VGG13().to(self.device)
@@ -73,7 +73,7 @@ class Solver(object):
         # self.model = DenseNet161().to(self.device)
         # self.model = DenseNet169().to(self.device)
         # self.model = DenseNet201().to(self.device)
-        self.model = WideResNet(depth=28, num_classes=10).to(self.device)
+        # self.model = WideResNet(depth=28, num_classes=10).to(self.device)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
