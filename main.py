@@ -12,6 +12,8 @@ from sklearn.metrics import confusion_matrix
 import numpy as np
 from os.path import join
 
+import random
+
 from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
 
@@ -24,9 +26,10 @@ def main():
     parser.add_argument('--epoch', default=200, type=int, help='number of epochs tp train for')
     parser.add_argument('--trainBatchSize', default=100, type=int, help='training batch size')
     parser.add_argument('--testBatchSize', default=100, type=int, help='testing batch size')
-    # parser.add_argument('--cuda', default=torch.cuda.is_available(), type=bool, help='whether cuda is in use')
     parser.add_argument('--gpus', default='[0]', type=str, help='gpu devices to be used')
     parser.add_argument('--classes', '-c', default='[0,1,2,3,4,5,6,7,8,9]', type=str, help='classes to be considered')
+    parser.add_argument('--sub_sample', '-s', default='[1.,1.,1.,1.,1.,1.,1.,1.,1.,1.]',
+                        type=str, help='sub sample ratio of each class')
     parser.add_argument('--exp', default='temp', type=str, help='experiment name')
     parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
@@ -49,26 +52,37 @@ class Solver(object):
         self.criterion = None
         self.optimizer = None
         self.scheduler = None
-        # self.cuda = config.cuda
         self.train_loader = None
         self.test_loader = None
         self.classes = eval(config.classes)
+        self.ratios = eval(config.sub_sample)
         print(self.classes)
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
 
     @staticmethod
-    def _sub_data(dataset, classes):
-        indices = [i for i, l in enumerate(dataset.targets) if l in classes]
-        dataset.data = dataset.data[indices]
-        dataset.targets = [classes.index(dataset.targets[i]) for i in indices]
+    def _sub_data(dataset, classes, ratios=None):
+        chosen_indices = []
+        if ratios is None:
+            ratios = [1., ] * len(classes)
+
+        for c, r in zip(classes, ratios):
+            indices = [i for i, l in enumerate(dataset.targets) if l == c]
+            num = len(indices)
+            sub_num = round(num * r)
+            indices = random.sample(indices, sub_num)
+            chosen_indices.extend(indices)
+
+        dataset.data = dataset.data[chosen_indices]
+        dataset.targets = [classes.index(i) for i in chosen_indices]
 
     def load_data(self):
         train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
         test_transform = transforms.Compose([transforms.ToTensor()])
 
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
-        self._sub_data(train_set, self.classes)
-        self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size, shuffle=True)
+        self._sub_data(train_set, self.classes, self.ratios)
+        self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size,
+                                                        shuffle=True)
 
         test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
         self._sub_data(test_set, self.classes)
@@ -107,7 +121,7 @@ class Solver(object):
         total = 0
 
         iter_num_per_epoch = len(self.train_loader)
-        global_step = (epoch-1) * iter_num_per_epoch
+        global_step = (epoch - 1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
             data, target = data.cuda(), target.cuda()
@@ -171,7 +185,7 @@ class Solver(object):
 
         s = 'the precisions are: '
         for p in precisions:
-            s += '{:.1f}%, '.format(p*100)
+            s += '{:.1f}%, '.format(p * 100)
         print(s)
 
         worst_precision = min(precisions)
