@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--testBatchSize', default=100, type=int, help='testing batch size')
     parser.add_argument('--cuda', default=torch.cuda.is_available(), type=bool, help='whether cuda is in use')
     parser.add_argument('--gpus', default='[0]', type=str, help='gpu devices to be used')
+    parser.add_argument('--classes', '-c', default='[0,1,2,3,4,5,6,7,8,9]', type=str, help='classes to be considered')
     parser.add_argument('--exp', default='temp', type=str, help='experiment name')
     parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
@@ -54,13 +55,23 @@ class Solver(object):
         self.train_loader = None
         self.test_loader = None
         self.recorder = SummaryWriters(config, CLASSES)
+        self.classes = eval(config.classes)
+
+    @staticmethod
+    def _sub_data(dataset, classes):
+        indices = [i for i, l in enumerate(dataset.targets) if l in classes]
+        dataset.data = dataset.data[indices]
+        dataset.targets = [dataset.targets[i] for i in indices]
 
     def load_data(self):
         train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
         test_transform = transforms.Compose([transforms.ToTensor()])
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
+        self._sub_data(train_set, self.classes)
         self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size, shuffle=True)
+
         test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
+        self._sub_data(test_set, self.classes)
         self.test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=self.test_batch_size, shuffle=False)
 
     def load_model(self):
@@ -166,9 +177,6 @@ class Solver(object):
         for p in precisions:
             s += '{:.1f}%, '.format(p*100)
         print(s)
-
-        # print('precisisons:')
-        # pprint(precisions)
 
         worst_precision = min(precisions)
 
