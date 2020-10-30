@@ -54,8 +54,8 @@ class Solver(object):
         self.cuda = config.cuda
         self.train_loader = None
         self.test_loader = None
-        self.recorder = SummaryWriters(config, CLASSES)
         self.classes = eval(config.classes)
+        self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
 
     @staticmethod
     def _sub_data(dataset, classes):
@@ -66,6 +66,7 @@ class Solver(object):
     def load_data(self):
         train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
         test_transform = transforms.Compose([transforms.ToTensor()])
+
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
         self._sub_data(train_set, self.classes)
         self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size, shuffle=True)
@@ -144,7 +145,7 @@ class Solver(object):
         test_loss = 0
         test_correct = 0
         total = 0
-        class_num = len(CLASSES)
+        class_num = len(self.classes)
         cm = np.zeros((class_num, class_num), dtype=np.int)
 
         with torch.no_grad():
