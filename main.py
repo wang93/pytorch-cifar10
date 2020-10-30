@@ -139,6 +139,11 @@ class Solver(object):
         hitted_nums = cm.diagonal()
         precisions = hitted_nums.astype(float) / sample_nums.astype(float)
 
+        s = 'the precisions are: '
+        for p in precisions:
+            s += '{:.1f}%'.format(p*100)
+        print(s)
+
         # print('precisisons:')
         # pprint(precisions)
 
