@@ -7,13 +7,13 @@ from torchvision import transforms as transforms
 import argparse
 
 from models import *
-from misc import progress_bar
 
 from sklearn.metrics import confusion_matrix
 import numpy as np
 from os.path import join
 
 from utils.standard_actions import prepare_running
+from utils.summary_writers import SummaryWriters
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -51,6 +51,7 @@ class Solver(object):
         self.cuda = config.cuda
         self.train_loader = None
         self.test_loader = None
+        self.recorder = SummaryWriters(config, CLASSES)
 
     def load_data(self):
         train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
@@ -89,11 +90,14 @@ class Solver(object):
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
         self.criterion = nn.CrossEntropyLoss().to(self.device)
 
-    def train(self):
+    def train(self, epoch):
         self.model.train()
         train_loss = 0
         train_correct = 0
         total = 0
+
+        iter_num_per_epoch = len(self.train_loader)
+        global_step = (epoch-1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
             data, target = data.to(self.device), target.to(self.device)
@@ -102,6 +106,10 @@ class Solver(object):
             loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
+
+            global_step += 1
+            self.recorder.record_iter(loss, global_step)
+
             train_loss += loss.item()
             prediction = torch.max(output, 1)  # second param "1" represents the dimension to be reduced
             total += target.size(0)
@@ -116,7 +124,7 @@ class Solver(object):
 
         return train_loss, train_correct / total
 
-    def test(self):
+    def test(self, epoch):
         # print("test:")
         self.model.eval()
         test_loss = 0
@@ -140,7 +148,9 @@ class Solver(object):
 
                 cm += confusion_matrix(y_pred=prediction.view(-1).cpu().numpy(), y_true=target.view(-1).cpu().numpy())
 
-        print('test accuracy: {:.2f}%'.format(100. * test_correct / total))
+        accuracy = test_correct / total
+
+        print('test accuracy: {:.2f}%'.format(100. * accuracy))
 
         # print('confusion matrix:')
         # pprint(cm)
@@ -161,6 +171,11 @@ class Solver(object):
 
         print('the worst precision is {:.1f}%'.format(worst_precision * 100))
 
+        iter_num_per_epoch = len(self.train_loader)
+        global_step = epoch * iter_num_per_epoch
+
+        self.recorder.record_epoch(accuracy, precisions, global_step)
+
         return test_loss, test_correct / total, worst_precision
 
     def save(self):
@@ -176,8 +191,8 @@ class Solver(object):
         for epoch in range(1, self.epochs + 1):
             self.scheduler.step(epoch)
             print("\n===> epoch: %d/200" % epoch)
-            self.train()
-            test_result = self.test()
+            self.train(epoch)
+            test_result = self.test(epoch)
             accuracy = max(accuracy, test_result[1])
             worst_precision = max(worst_precision, test_result[2])
             if epoch == self.epochs:
