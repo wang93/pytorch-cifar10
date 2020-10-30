@@ -117,7 +117,7 @@ class Solver(object):
         return train_loss, train_correct / total
 
     def test(self):
-        print("test:")
+        # print("test:")
         self.model.eval()
         test_loss = 0
         test_correct = 0
