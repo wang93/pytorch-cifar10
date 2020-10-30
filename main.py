@@ -132,8 +132,8 @@ class Solver(object):
 
                 cm += confusion_matrix(y_pred=prediction.view(-1).cpu().numpy(), y_true=target.view(-1).cpu().numpy())
 
-        print('confusion matrix:')
-        pprint(cm)
+        # print('confusion matrix:')
+        # pprint(cm)
 
         sample_nums = cm.sum(axis=1)
         hitted_nums = cm.diagonal()
@@ -142,7 +142,7 @@ class Solver(object):
         print('precisisons:')
         pprint(precisions)
 
-        print('the worst precision is {:.3f%}%'.format(min(precisions)))
+        print('the worst precision is {:.3f}%'.format(min(precisions) * 100))
 
         return test_loss, test_correct / total
 
