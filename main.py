@@ -141,7 +141,7 @@ class Solver(object):
 
         s = 'the precisions are: '
         for p in precisions:
-            s += '{:.1f}%'.format(p*100)
+            s += '{:.1f}%, '.format(p*100)
         print(s)
 
         # print('precisisons:')
