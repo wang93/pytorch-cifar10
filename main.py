@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--trainBatchSize', default=100, type=int, help='training batch size')
     parser.add_argument('--testBatchSize', default=100, type=int, help='testing batch size')
     parser.add_argument('--cuda', default=torch.cuda.is_available(), type=bool, help='whether cuda is in use')
-    parser.add_argument('--gpus', default=[0], type=list, help='gpu devices to be used')
+    parser.add_argument('--gpus', default='[0]', type=str, help='gpu devices to be used')
     parser.add_argument('--exp', default='temp', type=str, help='experiment name')
     parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
@@ -123,7 +123,7 @@ class Solver(object):
             # progress_bar(batch_num, len(self.train_loader), 'Loss: %.4f | Acc: %.3f%% (%d/%d)'
             #              % (train_loss / (batch_num + 1), 100. * train_correct / total, train_correct, total))
 
-        print('training loss: {:.3f}'.format(train_loss / (batch_num + 1)))
+        print('training loss: {:.5f}'.format(train_loss / (batch_num + 1)))
 
         return train_loss, train_correct / total
 
@@ -199,7 +199,7 @@ class Solver(object):
             accuracy = max(accuracy, test_result[1])
             worst_precision = max(worst_precision, test_result[2])
             if epoch == self.epochs:
-                print("===> BEST ACCURACY: %.3f%%" % (accuracy * 100))
+                print("===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
                 print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
                 self.save()
 
