@@ -11,6 +11,7 @@ from misc import progress_bar
 
 from sklearn.metrics import confusion_matrix
 import numpy as np
+from os.path import join
 
 from utils.standard_actions import prepare_running
 
@@ -39,6 +40,7 @@ class Solver(object):
         self.model = None
         self.lr = config.lr
         self.epochs = config.epoch
+        self.exp = config.exp
         self.train_batch_size = config.trainBatchSize
         self.test_batch_size = config.testBatchSize
         self.criterion = None
@@ -151,12 +153,14 @@ class Solver(object):
         # print('precisisons:')
         # pprint(precisions)
 
-        print('the worst precision is {:.1f}%'.format(min(precisions) * 100))
+        worst_precision = min(precisions)
+
+        print('the worst precision is {:.1f}%'.format(worst_precision * 100))
 
         return test_loss, test_correct / total
 
     def save(self):
-        model_out_path = "model.pth"
+        model_out_path = join('./exps', self.exp, "model.pth")
         torch.save(self.model, model_out_path)
         print("Checkpoint saved to {}".format(model_out_path))
 
@@ -164,6 +168,7 @@ class Solver(object):
         self.load_data()
         self.load_model()
         accuracy = 0
+        worst_precision = 0
         for epoch in range(1, self.epochs + 1):
             self.scheduler.step(epoch)
             print("\n===> epoch: %d/200" % epoch)
@@ -171,8 +176,10 @@ class Solver(object):
             print(train_result)
             test_result = self.test()
             accuracy = max(accuracy, test_result[1])
+            worst_precision = max(worst_precision, test_result[2])
             if epoch == self.epochs:
-                print("===> BEST ACC. PERFORMANCE: %.3f%%" % (accuracy * 100))
+                print("===> BEST ACCURACY: %.3f%%" % (accuracy * 100))
+                print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
                 self.save()
 
 
