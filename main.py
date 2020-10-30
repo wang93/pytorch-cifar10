@@ -73,7 +73,7 @@ class Solver(object):
             chosen_indices.extend(indices)
 
         dataset.data = dataset.data[chosen_indices]
-        dataset.targets = [classes.index(i) for i in chosen_indices]
+        dataset.targets = [classes.index(dataset.targets[i]) for i in chosen_indices]
 
     def load_data(self):
         train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
