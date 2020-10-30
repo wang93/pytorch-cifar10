@@ -11,6 +11,7 @@ from models import *
 from misc import progress_bar
 
 from sklearn.metrics import confusion_matrix
+import numpy as np
 from pprint import pprint
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -113,6 +114,8 @@ class Solver(object):
         test_loss = 0
         test_correct = 0
         total = 0
+        class_num = len(CLASSES)
+        cm = np.zeros((class_num, class_num))
 
         with torch.no_grad():
             for batch_num, (data, target) in enumerate(self.test_loader):
@@ -127,10 +130,10 @@ class Solver(object):
                 progress_bar(batch_num, len(self.test_loader), 'Loss: %.4f | Acc: %.3f%% (%d/%d)'
                              % (test_loss / (batch_num + 1), 100. * test_correct / total, test_correct, total))
 
-                cm = confusion_matrix(y_pred=prediction.view(-1).cpu().numpy(), y_true=target.view(-1).cpu().numpy())
+                cm += confusion_matrix(y_pred=prediction.view(-1).cpu().numpy(), y_true=target.view(-1).cpu().numpy())
 
-                print('confusion matrix:')
-                pprint(cm)
+        print('confusion matrix:')
+        pprint(cm)
 
         return test_loss, test_correct / total
 
