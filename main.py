@@ -115,7 +115,7 @@ class Solver(object):
         test_correct = 0
         total = 0
         class_num = len(CLASSES)
-        cm = np.zeros((class_num, class_num))
+        cm = np.zeros((class_num, class_num), dtype=np.int)
 
         with torch.no_grad():
             for batch_num, (data, target) in enumerate(self.test_loader):
@@ -134,6 +134,15 @@ class Solver(object):
 
         print('confusion matrix:')
         pprint(cm)
+
+        sample_nums = cm.sum(axis=1)
+        hitted_nums = cm.diagonal()
+        precisions = float(hitted_nums) / float(sample_nums)
+
+        print('precisisons:')
+        pprint(precisions)
+
+        print('the worst precision is {.3f%}%'.format(min(precisions)))
 
         return test_loss, test_correct / total
 
