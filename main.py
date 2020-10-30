@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--cuda', default=torch.cuda.is_available(), type=bool, help='whether cuda is in use')
     parser.add_argument('--gpus', default=[0], type=list, help='gpu devices to be used')
     parser.add_argument('--exp', default='temp', type=str, help='experiment name')
+    parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     args = parser.parse_args()
 
@@ -40,6 +41,7 @@ class Solver(object):
     def __init__(self, config):
         self.model = None
         self.lr = config.lr
+        self.arc = config.arc
         self.epochs = config.epoch
         self.exp = config.exp
         self.train_batch_size = config.trainBatchSize
@@ -68,23 +70,24 @@ class Solver(object):
         else:
             self.device = torch.device('cpu')
 
-        self.model = LeNet().to(self.device)
-        # self.model = AlexNet().to(self.device)
-        # self.model = VGG11().to(self.device)
-        # self.model = VGG13().to(self.device)
-        # self.model = VGG16().to(self.device)
-        # self.model = VGG19().to(self.device)
-        # self.model = GoogLeNet().to(self.device)
-        # self.model = resnet18().to(self.device)
-        # self.model = resnet34().to(self.device)
-        # self.model = resnet50().to(self.device)
-        # self.model = resnet101().to(self.device)
-        # self.model = resnet152().to(self.device)
-        # self.model = DenseNet121().to(self.device)
-        # self.model = DenseNet161().to(self.device)
-        # self.model = DenseNet169().to(self.device)
-        # self.model = DenseNet201().to(self.device)
-        # self.model = WideResNet(depth=28, num_classes=10).to(self.device)
+        model_factory = {
+            'lenet': LeNet,
+            'vgg11': VGG11,
+            'vgg16': VGG16,
+            'vgg19': VGG19,
+            'googlenet': GoogLeNet,
+            'resnet18': resnet18,
+            'resnet34': resnet34,
+            'resnet50': resnet50,
+            'resnet101': resnet101,
+            'resnet152': resnet152,
+            'densenet121': DenseNet121,
+            'densenet161': DenseNet161,
+            'densenet169': DenseNet169,
+            'densenet201': DenseNet201,
+            'WideResNet': WideResNet
+        }
+        self.model = model_factory[self.arc]().to(self.device)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
