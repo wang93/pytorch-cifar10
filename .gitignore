@@ -2,4 +2,5 @@
 .pyc
 *.pyc
 *data/
+*exps/
 *__pycache__/

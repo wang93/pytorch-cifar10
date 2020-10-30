@@ -3,7 +3,6 @@ import torch.utils.data
 import torch.backends.cudnn as cudnn
 import torchvision
 from torchvision import transforms as transforms
-import numpy as np
 
 import argparse
 
@@ -12,7 +11,8 @@ from misc import progress_bar
 
 from sklearn.metrics import confusion_matrix
 import numpy as np
-from pprint import pprint
+
+from utils.standard_actions import prepare_running
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -24,7 +24,11 @@ def main():
     parser.add_argument('--trainBatchSize', default=100, type=int, help='training batch size')
     parser.add_argument('--testBatchSize', default=100, type=int, help='testing batch size')
     parser.add_argument('--cuda', default=torch.cuda.is_available(), type=bool, help='whether cuda is in use')
+    parser.add_argument('--gpus', default=[0], type=list, help='gpu devices to be used')
+    parser.add_argument('--exp', default='temp', type=str, help='experiment name')
     args = parser.parse_args()
+
+    prepare_running(args)
 
     solver = Solver(args)
     solver.run()
