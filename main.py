@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--cuda', default=torch.cuda.is_available(), type=bool, help='whether cuda is in use')
     parser.add_argument('--gpus', default=[0], type=list, help='gpu devices to be used')
     parser.add_argument('--exp', default='temp', type=str, help='experiment name')
+    parser.add_argument('--seed', default=0, type=int, help='rand seed')
     args = parser.parse_args()
 
     prepare_running(args)
