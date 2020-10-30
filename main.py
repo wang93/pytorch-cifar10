@@ -24,7 +24,7 @@ def main():
     parser.add_argument('--epoch', default=200, type=int, help='number of epochs tp train for')
     parser.add_argument('--trainBatchSize', default=100, type=int, help='training batch size')
     parser.add_argument('--testBatchSize', default=100, type=int, help='testing batch size')
-    parser.add_argument('--cuda', default=torch.cuda.is_available(), type=bool, help='whether cuda is in use')
+    # parser.add_argument('--cuda', default=torch.cuda.is_available(), type=bool, help='whether cuda is in use')
     parser.add_argument('--gpus', default='[0]', type=str, help='gpu devices to be used')
     parser.add_argument('--classes', '-c', default='[0,1,2,3,4,5,6,7,8,9]', type=str, help='classes to be considered')
     parser.add_argument('--exp', default='temp', type=str, help='experiment name')
@@ -33,7 +33,6 @@ def main():
     args = parser.parse_args()
 
     prepare_running(args)
-
     solver = Solver(args)
     solver.run()
 
@@ -50,8 +49,7 @@ class Solver(object):
         self.criterion = None
         self.optimizer = None
         self.scheduler = None
-        self.device = None
-        self.cuda = config.cuda
+        # self.cuda = config.cuda
         self.train_loader = None
         self.test_loader = None
         self.classes = eval(config.classes)
@@ -77,12 +75,6 @@ class Solver(object):
         self.test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=self.test_batch_size, shuffle=False)
 
     def load_model(self):
-        if self.cuda:
-            self.device = torch.device('cuda')
-            cudnn.benchmark = True
-        else:
-            self.device = torch.device('cpu')
-
         model_factory = {
             'lenet': LeNet,
             'vgg11': VGG11,
@@ -100,11 +92,13 @@ class Solver(object):
             'densenet201': DenseNet201,
             'WideResNet': WideResNet
         }
-        self.model = model_factory[self.arc](class_num=len(self.classes)).to(self.device)
+        model = model_factory[self.arc](class_num=len(self.classes))
+
+        self.model = nn.DataParallel(model).cuda()
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-        self.criterion = nn.CrossEntropyLoss().to(self.device)
+        self.criterion = nn.CrossEntropyLoss().cuda()
 
     def train(self, epoch):
         self.model.train()
@@ -116,7 +110,7 @@ class Solver(object):
         global_step = (epoch-1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
-            data, target = data.to(self.device), target.to(self.device)
+            data, target = data.cuda(), target.cuda()
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.criterion(output, target)
@@ -151,7 +145,7 @@ class Solver(object):
 
         with torch.no_grad():
             for batch_num, (data, target) in enumerate(self.test_loader):
-                data, target = data.to(self.device), target.to(self.device)
+                data, target = data.cuda(), target.cuda()
                 output = self.model(data)
                 loss = self.criterion(output, target)
                 test_loss += loss.item()
