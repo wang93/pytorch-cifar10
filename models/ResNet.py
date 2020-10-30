@@ -79,7 +79,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=10):
+    def __init__(self, block, layers, class_num=10):
         self.inplanes = 64
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
@@ -90,7 +90,7 @@ class ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AvgPool2d(kernel_size=4)
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.fc = nn.Linear(512 * block.expansion, class_num)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -132,21 +132,21 @@ class ResNet(nn.Module):
         return x
 
 
-def resnet18(**kwargs):
-    return ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
+def resnet18(class_num=10):
+    return ResNet(BasicBlock, [2, 2, 2, 2], class_num)
 
 
-def resnet34(**kwargs):
-    return ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
+def resnet34(class_num=10):
+    return ResNet(BasicBlock, [3, 4, 6, 3], class_num)
 
 
-def resnet50(**kwargs):
-    return ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+def resnet50(class_num=10):
+    return ResNet(Bottleneck, [3, 4, 6, 3], class_num)
 
 
-def resnet101(**kwargs):
-    return ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
+def resnet101(class_num=10):
+    return ResNet(Bottleneck, [3, 4, 23, 3], class_num)
 
 
-def resnet152(**kwargs):
-    return ResNet(Bottleneck, [3, 8, 36, 3], **kwargs)
+def resnet152(class_num=10):
+    return ResNet(Bottleneck, [3, 8, 36, 3], class_num)

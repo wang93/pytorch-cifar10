@@ -99,7 +99,7 @@ class Solver(object):
             'densenet201': DenseNet201,
             'WideResNet': WideResNet
         }
-        self.model = model_factory[self.arc]().to(self.device)
+        self.model = model_factory[self.arc](class_num=len(self.classes)).to(self.device)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
