@@ -139,10 +139,10 @@ class Solver(object):
         hitted_nums = cm.diagonal()
         precisions = hitted_nums.astype(float) / sample_nums.astype(float)
 
-        print('precisisons:')
-        pprint(precisions)
+        # print('precisisons:')
+        # pprint(precisions)
 
-        print('the worst precision is {:.3f}%'.format(min(precisions) * 100))
+        print('the worst precision is {:.1f}%'.format(min(precisions) * 100))
 
         return test_loss, test_correct / total
 
