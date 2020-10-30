@@ -90,7 +90,6 @@ class Solver(object):
         self.criterion = nn.CrossEntropyLoss().to(self.device)
 
     def train(self):
-        print("train:")
         self.model.train()
         train_loss = 0
         train_correct = 0
@@ -110,8 +109,10 @@ class Solver(object):
             # train_correct incremented by one if predicted right
             train_correct += np.sum(prediction[1].cpu().numpy() == target.cpu().numpy())
 
-            progress_bar(batch_num, len(self.train_loader), 'Loss: %.4f | Acc: %.3f%% (%d/%d)'
-                         % (train_loss / (batch_num + 1), 100. * train_correct / total, train_correct, total))
+            # progress_bar(batch_num, len(self.train_loader), 'Loss: %.4f | Acc: %.3f%% (%d/%d)'
+            #              % (train_loss / (batch_num + 1), 100. * train_correct / total, train_correct, total))
+
+        print('training loss: {:.3f}'.format(train_loss / (batch_num + 1)))
 
         return train_loss, train_correct / total
 
@@ -158,7 +159,7 @@ class Solver(object):
 
         print('the worst precision is {:.1f}%'.format(worst_precision * 100))
 
-        return test_loss, test_correct / total
+        return test_loss, test_correct / total, worst_precision
 
     def save(self):
         model_out_path = join('./exps', self.exp, "model.pth")
@@ -173,8 +174,7 @@ class Solver(object):
         for epoch in range(1, self.epochs + 1):
             self.scheduler.step(epoch)
             print("\n===> epoch: %d/200" % epoch)
-            train_result = self.train()
-            print(train_result)
+            self.train()
             test_result = self.test()
             accuracy = max(accuracy, test_result[1])
             worst_precision = max(worst_precision, test_result[2])
