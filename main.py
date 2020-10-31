@@ -1,6 +1,5 @@
 import torch.optim as optim
 import torch.utils.data
-import torch.backends.cudnn as cudnn
 import torchvision
 from torchvision import transforms as transforms
 
@@ -33,7 +32,12 @@ def main():
     parser.add_argument('--exp', default='temp', type=str, help='experiment name')
     parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
+    parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
+    parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     args = parser.parse_args()
+
+    if args.srl and len(args.classes) != 2:
+        raise NotImplementedError
 
     prepare_running(args)
     solver = Solver(args)
@@ -56,6 +60,8 @@ class Solver(object):
         self.test_loader = None
         self.classes = eval(config.classes)
         self.ratios = eval(config.sub_sample)
+        self.srl = config.srl
+        self.srl_lr = config.srl_lr
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
 
     @staticmethod
@@ -80,8 +86,18 @@ class Solver(object):
 
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
         self._sub_data(train_set, self.classes, self.ratios)
-        self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size,
-                                                        shuffle=True)
+
+        if self.srl:
+            from SampleRateLearning.sampler import SampleRateBatchSampler
+            from SampleRateLearning.loss import SRL_CELoss
+            batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.train_batch_size)
+            self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_sampler=batch_sampler)
+            self.criterion = SRL_CELoss(sampler=batch_sampler, optim='adam', lr=self.srl_lr).cuda()
+
+        else:
+            self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size,
+                                                            shuffle=True)
+            self.criterion = nn.CrossEntropyLoss().cuda()
 
         test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
         self._sub_data(test_set, self.classes)
@@ -111,7 +127,6 @@ class Solver(object):
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-        self.criterion = nn.CrossEntropyLoss().cuda()
 
     def train(self, epoch):
         self.model.train()
@@ -218,7 +233,7 @@ class Solver(object):
             accuracy = max(accuracy, test_result[1])
             worst_precision = max(worst_precision, test_result[2])
             if epoch == self.epochs:
-                print("===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
+                print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
                 print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
                 self.save()
 
