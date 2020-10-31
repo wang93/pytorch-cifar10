@@ -92,7 +92,7 @@ class Solver(object):
             from SampleRateLearning.loss import SRL_CELoss
             batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.train_batch_size)
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_sampler=batch_sampler)
-            self.criterion = SRL_CELoss(sampler=batch_sampler, optim='adam', lr=self.srl_lr).cuda()
+            self.criterion = SRL_CELoss(sampler=batch_sampler, optim='adam', lr=max(self.srl_lr, 0)).cuda()
 
         else:
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size,
@@ -233,6 +233,10 @@ class Solver(object):
         worst_precision = 0
         for epoch in range(1, self.epochs + 1):
             self.scheduler.step(epoch)
+            if self.srl and self.srl_lr < 0:
+                cur_lr = self.optimizer.param_groups[0]['lr']
+                self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
+                #     self.summary_writer.add_scalar('lr', cur_lr, global_step)
             print("\n===> epoch: %d/200" % epoch)
             self.train(epoch)
             test_result = self.test(epoch)
