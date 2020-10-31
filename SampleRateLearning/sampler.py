@@ -62,7 +62,7 @@ class SampleRateBatchSampler(SampleRateSampler):
         indices = [[], []]
         for i, t in enumerate(data_source.targets):
             indices[t].append(i)
-        self.sample_agents = [_HalfQueue(sub_indices, batch_size*2) for sub_indices in indices]
+        self.sample_agents = [_HalfQueue(sub_indices, batch_size) for sub_indices in indices]
         self.length = (self.sample_num_per_epoch + self.batch_size - 1) // self.batch_size
 
     def __next__(self):
