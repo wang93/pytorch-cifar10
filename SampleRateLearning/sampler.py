@@ -35,9 +35,7 @@ class SampleRateSampler(Sampler):
 
 class _HalfQueue(object):
     def __init__(self, elements: list, margin):
-        num_elements = len(elements)
-        max_recent_num = margin
-        self.recent = Queue(maxsize=max_recent_num)
+        self.recent = Queue(maxsize=margin)
         self.selection_pool = set(elements)
 
     def _update(self, new_element):
@@ -60,11 +58,11 @@ class _HalfQueue(object):
 class SampleRateBatchSampler(SampleRateSampler):
     def __init__(self, data_source, batch_size=1):
         super(SampleRateBatchSampler, self).__init__(data_source)
-        self.batch_size = batch_size * 2
+        self.batch_size = batch_size
         indices = [[], []]
         for i, t in enumerate(data_source.targets):
             indices[t].append(i)
-        self.sample_agents = [_HalfQueue(sub_indices, batch_size) for sub_indices in indices]
+        self.sample_agents = [_HalfQueue(sub_indices, batch_size*2) for sub_indices in indices]
         self.length = (self.sample_num_per_epoch + self.batch_size - 1) // self.batch_size
 
     def __next__(self):
