@@ -36,9 +36,6 @@ def main():
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     args = parser.parse_args()
 
-    if args.srl and len(args.classes) != 2:
-        raise NotImplementedError
-
     prepare_running(args)
     solver = Solver(args)
     solver.run()
@@ -63,6 +60,9 @@ class Solver(object):
         self.srl = config.srl
         self.srl_lr = config.srl_lr
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
+
+        if self.srl and len(self.classes) != 2:
+            raise NotImplementedError
 
     @staticmethod
     def _sub_data(dataset, classes, ratios=None):
