@@ -159,6 +159,8 @@ class Solver(object):
             #              % (train_loss / (batch_num + 1), 100. * train_correct / total, train_correct, total))
 
         print('training loss: {:.5f}'.format(train_loss / (batch_num + 1)))
+        if self.srl:
+            print('pos rate: {:.4f}'.format(self.criterion.pos_rate))
 
         return train_loss, train_correct / total
 

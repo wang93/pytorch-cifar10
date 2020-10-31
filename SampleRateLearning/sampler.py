@@ -15,10 +15,6 @@ class SampleRateSampler(Sampler):
         self.data_source = data_source
         # self.alpha = torch.nn.Parameter(torch.tensor(0.))
         self.pos_rate = 0.5
-        self.index_dic = defaultdict(list)
-        for index, (_, pid, _) in enumerate(data_source):
-            self.index_dic[pid].append(index)
-        self.pids = list(self.index_dic.keys())
         self.sample_num_per_epoch = len(data_source)
 
     def update(self, pos_rate):
