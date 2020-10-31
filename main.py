@@ -150,7 +150,7 @@ class Solver(object):
                 pos_rate = self.criterion.pos_rate
             else:
                 pos_rate = None
-            self.recorder.record_iter(loss, global_step, pos_rate=pos_rate)
+            self.recorder.record_iter(loss, global_step, pos_rate=pos_rate, optimizer=self.optimizer)
 
             train_loss += loss.item()
             prediction = torch.max(output, 1)  # second param "1" represents the dimension to be reduced
