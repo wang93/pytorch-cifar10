@@ -66,6 +66,8 @@ class Solver(object):
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
         self.stable_bn = config.stable_bn
 
+        global_variables.classes_num = len(self.classes)
+
         if self.srl and len(self.classes) != 2:
             raise NotImplementedError
 
