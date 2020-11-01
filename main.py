@@ -10,6 +10,7 @@ from models import *
 from sklearn.metrics import confusion_matrix
 import numpy as np
 from os.path import join
+from importlib import import_module
 
 import random
 
@@ -123,13 +124,13 @@ class Solver(object):
             'densenet161': DenseNet161,
             'densenet169': DenseNet169,
             'densenet201': DenseNet201,
-            'WideResNet': WideResNet
+            'wresnet': WideResNet
         }
         model = model_factory[self.arc](class_num=len(self.classes))
 
         if self.stable_bn >= 0:
-            import SampleRateLearning.stable_batchnorm as sbns
-            sbn = getattr(sbns, 'batchnorm{0}'.format(self.stable_bn))
+            model_path = 'SampleRateLearning.stable_batchnorm.batchnorm{0}'.format(self.stable_bn)
+            sbn = import_module(model_path)
             model = sbn.convert_model(model)
 
         self.model = nn.DataParallel(model).cuda()
