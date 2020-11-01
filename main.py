@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
+    parser.add_argument('--stable_bn', default=-1, type=int, help='version of stable bn')
     args = parser.parse_args()
 
     prepare_running(args)
