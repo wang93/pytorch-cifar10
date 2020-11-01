@@ -12,6 +12,7 @@ import numpy as np
 from os.path import join
 
 import random
+import importlib
 
 from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
@@ -128,8 +129,8 @@ class Solver(object):
         model = model_factory[self.arc](class_num=len(self.classes))
 
         if self.stable_bn >= 0:
-            command = 'from SampleRateLearning.stable_batchnorm.batchnorm{0} import convert_model'.format(self.stable_bn)
-            exec(command)
+            command = 'SampleRateLearning.stable_batchnorm.batchnorm{0}.convert_model'.format(self.stable_bn)
+            convert_model = importlib.import_module(command).convert_model
             model = convert_model(model)
 
         self.model = nn.DataParallel(model).cuda()
