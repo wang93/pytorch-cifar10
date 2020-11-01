@@ -13,7 +13,7 @@ def parse_target(target):
     if isinstance(target, list):
         pass
     elif isinstance(target, torch.Tensor):
-        target = target.view(-1).numpy().tolist()
+        target = target.detach().view(-1).cpu().numpy().tolist()
     else:
         raise TypeError
 
