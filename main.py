@@ -16,6 +16,8 @@ import random
 from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
 
+from SampleRateLearning.stable_batchnorm import global_variables
+
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 
@@ -61,6 +63,7 @@ class Solver(object):
         self.srl = config.srl
         self.srl_lr = config.srl_lr
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
+        self.stable_bn = config.stable_bn
 
         if self.srl and len(self.classes) != 2:
             raise NotImplementedError
@@ -124,6 +127,11 @@ class Solver(object):
         }
         model = model_factory[self.arc](class_num=len(self.classes))
 
+        if self.stable_bn >= 0:
+            command = 'from SampleRateLearning.stable_batchnorm.batchnorm{0} import convert_model'.format(self.stable_bn)
+            exec(command)
+            model = convert_model(model)
+
         self.model = nn.DataParallel(model).cuda()
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
@@ -140,6 +148,8 @@ class Solver(object):
 
         for batch_num, (data, target) in enumerate(self.train_loader):
             data, target = data.cuda(), target.cuda()
+            global_variables.parse_target(target)
+
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.criterion(output, target)
