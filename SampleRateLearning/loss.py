@@ -42,7 +42,7 @@ class SRI_BCELoss(nn.Module):
             loss = losses.mean()
 
         # inference pos_rate
-        self.pos_rate = (pos_loss / (neg_loss + pos_loss)).cpu().item()
+        self.pos_rate = (pos_loss / (neg_loss + pos_loss + 0.000001)).cpu().item()
 
         return loss
 
