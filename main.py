@@ -135,7 +135,7 @@ class Solver(object):
         if self.val_ratio > 0:
             from SampleRateLearning.sampler import ValidationBatchSampler
             batch_sampler = ValidationBatchSampler(data_source=val_set, batch_size=self.val_batch_size)
-            self.val_loader = torch.utils.data.DataLoader(dataset=val_set, batch_sampler=batch_sampler)
+            self.val_loader = iter(torch.utils.data.DataLoader(dataset=val_set, batch_sampler=batch_sampler))
 
         if self.srl or self.sri:
             from SampleRateLearning.sampler import SampleRateBatchSampler
