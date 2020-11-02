@@ -103,3 +103,6 @@ class ValidationBatchSampler(Sampler):
             batch += agent.select(self.num)
 
         return batch
+
+    def __iter__(self):
+        return self
