@@ -6,7 +6,7 @@ from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 class SRI_BCELoss(nn.Module):
     def __init__(self, sampler: SampleRateSampler, norm=False):
-        if not isinstance(sampler, (SampleRateSampler, SampleRateBatchSampler)):
+        if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
         super(SRI_BCELoss, self).__init__()
@@ -62,7 +62,7 @@ class SRI_CELoss(SRI_BCELoss):
 
 class SRL_BCELoss(nn.Module):
     def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0., norm=False):
-        if not isinstance(sampler, (SampleRateSampler, SampleRateBatchSampler)):
+        if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
         super(SRL_BCELoss, self).__init__()
@@ -110,27 +110,24 @@ class SRL_BCELoss(nn.Module):
 
     def forward(self, scores, labels: torch.Tensor):
         losses, is_pos = self.get_losses(scores, labels)
-        pos_loss = losses[is_pos].mean()
-        neg_loss = losses[~is_pos].mean()
+        if is_pos.size(0) > self.sampler.batch_size:
+            # use val data to estimate pos_loss and neg_loss
+            val_losses = losses[self.sampler.batch_size:]
+            val_is_pos = is_pos[self.sampler.batch_size:]
+            pos_loss = val_losses[val_is_pos].mean()
+            neg_loss = val_losses[~val_is_pos].mean()
+            train_losses = losses[:self.sampler.batch_size]
+        else:
+            pos_loss = losses[is_pos].mean()
+            neg_loss = losses[~is_pos].mean()
+            train_losses = losses
 
         self.recent_losses = [pos_loss, neg_loss]
 
         if self.norm:
-            if torch.isnan(pos_loss):
-                print('pos_loss is nan!')
-                loss = neg_loss * 0.
-            elif torch.isnan(neg_loss):
-                print('neg_loss is nan!')
-                loss = pos_loss * 0.
-            else:
-                pos_num = is_pos.sum()
-                batch_size = scores.size(0)
-                real_pos_rate = pos_num / float(batch_size)
-                scale_correction_factor = torch.sqrt(real_pos_rate * (1. - real_pos_rate))
-                loss = (pos_loss + neg_loss) * scale_correction_factor  # * / 2.
-
+            raise NotImplementedError
         else:
-            loss = losses.mean()
+            loss = train_losses.mean()
 
         # update pos_rate
         grad = (neg_loss - pos_loss).detach()

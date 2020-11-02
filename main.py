@@ -19,6 +19,8 @@ from utils.summary_writers import SummaryWriters
 
 from SampleRateLearning.stable_batchnorm import global_variables
 
+from copy import deepcopy
+
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 
@@ -37,7 +39,8 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
-    parser.add_argument('--srl_val', default=0., type=float, help='ratio of validation set in the training set')
+    parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
+    parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
     parser.add_argument("--sri", action="store_true", help="sample rate inference or not.")
     parser.add_argument('--stable_bn', default=-1, type=int, help='version of stable bn')
     args = parser.parse_args()
@@ -55,17 +58,19 @@ class Solver(object):
         self.epochs = config.epoch
         self.exp = config.exp
         self.train_batch_size = config.trainBatchSize
+        self.val_batch_size = config.valBatchSize
         self.test_batch_size = config.testBatchSize
         self.criterion = None
         self.optimizer = None
         self.scheduler = None
         self.train_loader = None
+        self.val_loader = None
         self.test_loader = None
         self.classes = eval(config.classes)
         self.ratios = eval(config.sub_sample)
         self.srl = config.srl
         self.srl_lr = config.srl_lr
-        self.srl_val = config.srl_val
+        self.val_ratio = config.val_ratio
         self.sri = config.sri
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
         self.stable_bn = config.stable_bn
@@ -76,7 +81,7 @@ class Solver(object):
             raise NotImplementedError
 
     @staticmethod
-    def _sub_data(dataset, classes, ratios=None):
+    def _sub_data(dataset, classes, ratios=None, val_ratio=0.):
         chosen_indices = []
         if ratios is None:
             ratios = [1., ] * len(classes)
@@ -94,12 +99,43 @@ class Solver(object):
         dataset.classes = [dataset.classes[c] for c in classes]
         dataset.class_to_idx = {c: i for i, c in enumerate(dataset.classes)}
 
+        if val_ratio <= 0.:
+            return
+
+        train_indices = []
+        val_indices = []
+
+        for c in range(len(dataset.classes)):
+            indices = [i for i, l in enumerate(dataset.targets) if l == c]
+            num = len(indices)
+            sub_num = round(num * val_ratio)
+            v_indices = random.sample(indices, sub_num)
+            t_indices = list(set(indices) - set(v_indices))
+            val_indices.extend(v_indices)
+            train_indices.extend(t_indices)
+
+        train_set = dataset
+        val_set = deepcopy(dataset)
+
+        train_set.data = train_set.data[train_indices]
+        train_set.targets = [train_set.targets[i] for i in train_indices]
+
+        val_set.data = val_set.data[val_indices]
+        val_set.targets = [val_set.targets[i] for i in val_indices]
+
+        return train_set, val_set
+
     def load_data(self):
         train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
         test_transform = transforms.Compose([transforms.ToTensor()])
 
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
-        self._sub_data(train_set, self.classes, self.ratios)
+        train_set, val_set = self._sub_data(train_set, self.classes, self.ratios, self.val_ratio)
+
+        if self.val_ratio > 0:
+            from SampleRateLearning.sampler import ValidationBatchSampler
+            batch_sampler = ValidationBatchSampler(data_source=val_set, batch_size=self.val_batch_size)
+            self.val_loader = torch.utils.data.DataLoader(dataset=val_set, batch_sampler=batch_sampler)
 
         if self.srl or self.sri:
             from SampleRateLearning.sampler import SampleRateBatchSampler
@@ -148,7 +184,6 @@ class Solver(object):
             model = sbn.convert_model(model)
 
         self.model = nn.DataParallel(model).cuda()
-
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
 
@@ -162,6 +197,11 @@ class Solver(object):
         global_step = (epoch - 1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
+            if self.val_loader is not None:
+                val_data, val_target = self.val_loader.next()
+                data = torch.cat((data, val_data), dim=0)
+                target = torch.cat((target, val_target), dim=0)
+
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
 
