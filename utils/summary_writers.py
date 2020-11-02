@@ -38,7 +38,7 @@ class SummaryWriters(object):
 
         if isinstance(criterion, (SRI_BCELoss, SRL_BCELoss)):
             for writer, c_loss in zip(self.class_summary_writers, criterion.recent_losses):
-                writer.add_scalar('classwise_loss', loss.item(), global_step)
+                writer.add_scalar('classwise_loss', c_loss.item(), global_step)
 
         if pos_rate is not None:
             if isinstance(pos_rate, torch.Tensor):
