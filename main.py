@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
+    parser.add_argument('--srl_val', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument("--sri", action="store_true", help="sample rate inference or not.")
     parser.add_argument('--stable_bn', default=-1, type=int, help='version of stable bn')
     args = parser.parse_args()
@@ -64,6 +65,7 @@ class Solver(object):
         self.ratios = eval(config.sub_sample)
         self.srl = config.srl
         self.srl_lr = config.srl_lr
+        self.srl_val = config.srl_val
         self.sri = config.sri
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
         self.stable_bn = config.stable_bn
@@ -88,6 +90,9 @@ class Solver(object):
 
         dataset.data = dataset.data[chosen_indices]
         dataset.targets = [classes.index(dataset.targets[i]) for i in chosen_indices]
+
+        dataset.classes = [dataset.classes[c] for c in classes]
+        dataset.class_to_idx = {c: i for i, c in enumerate(dataset.classes)}
 
     def load_data(self):
         train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
