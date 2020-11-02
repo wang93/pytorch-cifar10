@@ -113,7 +113,7 @@ class SRL_BCELoss(nn.Module):
         pos_loss = losses[is_pos].mean()
         neg_loss = losses[~is_pos].mean()
 
-        self.recent_losses = [pos_loss.cpu().item(), neg_loss.cpu().item()]
+        self.recent_losses = [pos_loss, neg_loss]
 
         if self.norm:
             if torch.isnan(pos_loss):
