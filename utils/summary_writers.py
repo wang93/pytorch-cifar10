@@ -28,22 +28,23 @@ class SummaryWriters(object):
 
     def record_epoch(self, acc, precisions, global_step):
         self.summary_writer.add_scalar('accuracy', acc, global_step)
-        self.summary_writer.add_scalar('worst precision', min(precisions), global_step)
+        self.summary_writer.add_scalar('worst precision', float(min(precisions)), global_step)
         for writer, precision in zip(self.class_summary_writers, precisions):
-            writer.add_scalar('precision', precision, global_step)
+            writer.add_scalar('precision', float(precision), global_step)
 
     def record_iter(self, loss, global_step, pos_rate=None, optimizer=None, criterion=None):
         if loss is not None:
-            self.summary_writer.add_scalar('loss', loss.item(), global_step)
+            self.summary_writer.add_scalar('loss', loss.cpu().item(), global_step)
 
         if isinstance(criterion, (SRI_BCELoss, SRL_BCELoss)):
             for writer, c_loss in zip(self.class_summary_writers, criterion.recent_losses):
-                writer.add_scalar('classwise_loss', c_loss.item(), global_step)
+                writer.add_scalar('classwise_loss', c_loss.cpu().item(), global_step)
 
         if pos_rate is not None:
             if isinstance(pos_rate, torch.Tensor):
                 pos_rate = pos_rate.cpu().item()
-            self.summary_writer.add_scalar('pos_rate', pos_rate, global_step)
+            self.summary_writer.add_scalar('pos_rate', float(pos_rate), global_step)
+
         if optimizer is not None:
             cur_lr = optimizer.param_groups[0]['lr']
-            self.summary_writer.add_scalar('lr', cur_lr, global_step)
+            self.summary_writer.add_scalar('lr', float(cur_lr), global_step)
