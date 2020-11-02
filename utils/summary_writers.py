@@ -36,6 +36,8 @@ class SummaryWriters(object):
         if loss is not None:
             self.summary_writer.add_scalar('loss', loss.item(), global_step)
         if pos_rate is not None:
+            if isinstance(pos_rate, torch.Tensor):
+                pos_rate = pos_rate.cpu().item()
             self.summary_writer.add_scalar('pos_rate', pos_rate.item(), global_step)
         if optimizer is not None:
             cur_lr = optimizer.param_groups[0]['lr']
