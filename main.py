@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
+    parser.add_argument("--sri", action="store_true", help="sample rate inference or not.")
     parser.add_argument('--stable_bn', default=-1, type=int, help='version of stable bn')
     args = parser.parse_args()
 
@@ -63,6 +64,7 @@ class Solver(object):
         self.ratios = eval(config.sub_sample)
         self.srl = config.srl
         self.srl_lr = config.srl_lr
+        self.sri = config.sri
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
         self.stable_bn = config.stable_bn
 
@@ -94,12 +96,17 @@ class Solver(object):
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
         self._sub_data(train_set, self.classes, self.ratios)
 
-        if self.srl:
+        if self.srl or self.sri:
             from SampleRateLearning.sampler import SampleRateBatchSampler
-            from SampleRateLearning.loss import SRL_CELoss
             batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.train_batch_size)
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_sampler=batch_sampler)
-            self.criterion = SRL_CELoss(sampler=batch_sampler, optim='adam', lr=max(self.srl_lr, 0)).cuda()
+
+            if self.srl:
+                from SampleRateLearning.loss import SRL_CELoss
+                self.criterion = SRL_CELoss(sampler=batch_sampler, optim='adam', lr=max(self.srl_lr, 0)).cuda()
+            else:
+                from SampleRateLearning.loss import SRI_CELoss
+                self.criterion = SRI_CELoss(sampler=batch_sampler).cuda()
 
         else:
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size,
@@ -160,7 +167,7 @@ class Solver(object):
             self.optimizer.step()
 
             global_step += 1
-            if self.srl:
+            if self.srl or self.sri:
                 pos_rate = self.criterion.pos_rate
             else:
                 pos_rate = None
@@ -177,7 +184,7 @@ class Solver(object):
             #              % (train_loss / (batch_num + 1), 100. * train_correct / total, train_correct, total))
 
         print('training loss: {:.5f}'.format(train_loss / (batch_num + 1)))
-        if self.srl:
+        if self.srl or self.sri:
             print('pos rate: {:.4f}'.format(self.criterion.pos_rate))
 
         return train_loss, train_correct / total

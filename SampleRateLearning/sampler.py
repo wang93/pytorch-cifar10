@@ -1,7 +1,5 @@
 from __future__ import absolute_import
 
-from collections import defaultdict
-
 from numpy import clip
 from torch.utils.data.sampler import Sampler
 
@@ -18,7 +16,10 @@ class SampleRateSampler(Sampler):
         self.sample_num_per_epoch = len(data_source)
 
     def update(self, pos_rate):
-        self.pos_rate = pos_rate.cpu().item()
+        if isinstance(pos_rate, float):
+            self.pos_rate = pos_rate
+        else:
+            self.pos_rate = pos_rate.cpu().item()
 
     def __iter__(self):
         self.cur_idx = -1
