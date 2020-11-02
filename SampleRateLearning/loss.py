@@ -36,7 +36,7 @@ class SRI_BCELoss(nn.Module):
                 batch_size = scores.size(0)
                 real_pos_rate = pos_num / float(batch_size)
                 scale_correction_factor = torch.sqrt(real_pos_rate * (1. - real_pos_rate))
-                loss = (pos_loss + neg_loss) * scale_correction_factor  # * / 2.
+                loss = (pos_loss + neg_loss) * scale_correction_factor
 
         else:
             loss = losses.mean()

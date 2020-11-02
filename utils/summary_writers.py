@@ -10,6 +10,7 @@ SummaryWriters for braidosnets
 from tensorboardX import SummaryWriter
 import torch
 from os.path import join as pjoin
+from SampleRateLearning.loss import SRL_BCELoss, SRI_BCELoss
 
 
 class SummaryWriters(object):
@@ -34,6 +35,11 @@ class SummaryWriters(object):
     def record_iter(self, loss, global_step, pos_rate=None, optimizer=None):
         if loss is not None:
             self.summary_writer.add_scalar('loss', loss.item(), global_step)
+
+        if isinstance(loss, (SRI_BCELoss, SRL_BCELoss)):
+            for writer, c_loss in zip(self.class_summary_writers, loss.recent_losses):
+                writer.add_scalar('classwise_loss', loss.item(), global_step)
+
         if pos_rate is not None:
             if isinstance(pos_rate, torch.Tensor):
                 pos_rate = pos_rate.cpu().item()

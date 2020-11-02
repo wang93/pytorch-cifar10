@@ -42,9 +42,6 @@ class BatchNorm1d(_BatchNorm):
         if input.dim() != 2:
             raise ValueError('expected 2D input (got {}D input)'
                              .format(input.dim()))
-        # if input.dim() != 2 and input.dim() != 3:
-        #     raise ValueError('expected 2D or 3D input (got {}D input)'
-        #                      .format(input.dim()))
 
     @staticmethod
     def expand(stat, *args, **kwargs):
