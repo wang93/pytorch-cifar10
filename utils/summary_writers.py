@@ -32,12 +32,12 @@ class SummaryWriters(object):
         for writer, precision in zip(self.class_summary_writers, precisions):
             writer.add_scalar('precision', precision, global_step)
 
-    def record_iter(self, loss, global_step, pos_rate=None, optimizer=None):
+    def record_iter(self, loss, global_step, pos_rate=None, optimizer=None, criterion=None):
         if loss is not None:
             self.summary_writer.add_scalar('loss', loss.item(), global_step)
 
-        if isinstance(loss, (SRI_BCELoss, SRL_BCELoss)):
-            for writer, c_loss in zip(self.class_summary_writers, loss.recent_losses):
+        if isinstance(criterion, (SRI_BCELoss, SRL_BCELoss)):
+            for writer, c_loss in zip(self.class_summary_writers, criterion.recent_losses):
                 writer.add_scalar('classwise_loss', loss.item(), global_step)
 
         if pos_rate is not None:
