@@ -100,7 +100,7 @@ class Solver(object):
         dataset.class_to_idx = {c: i for i, c in enumerate(dataset.classes)}
 
         if val_ratio <= 0.:
-            return
+            return dataset, None
 
         train_indices = []
         val_indices = []
@@ -132,7 +132,7 @@ class Solver(object):
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
         train_set, val_set = self._sub_data(train_set, self.classes, self.ratios, self.val_ratio)
 
-        if self.val_ratio > 0:
+        if val_set is not None:
             from SampleRateLearning.sampler import ValidationBatchSampler
             batch_sampler = ValidationBatchSampler(data_source=val_set, batch_size=self.val_batch_size)
             self.val_loader = iter(torch.utils.data.DataLoader(dataset=val_set, batch_sampler=batch_sampler))
