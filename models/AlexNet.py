@@ -31,7 +31,7 @@ class AlexNet(nn.Module):
             nn.Dropout(),
             nn.Linear(4096, 4096),
             nn.ReLU(inplace=True),
-            nn.Linear(4096, num_classes, bias=False),
+            nn.Linear(4096, num_classes, bias=True),
         )
 
     def forward(self, x):
