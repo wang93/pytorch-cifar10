@@ -4,13 +4,19 @@
 # datetime:2020/10/16 15:30
 
 """
-SummaryWriters for braidosnets
+SummaryWriters
 """
 
 from tensorboardX import SummaryWriter
 import torch
 from os.path import join as pjoin
 from SampleRateLearning.loss import SRL_BCELoss, SRI_BCELoss
+
+
+def normal_scalar(v):
+    if isinstance(v, torch.Tensor):
+        v = v.cpu().item()
+    return v
 
 
 class SummaryWriters(object):
@@ -28,23 +34,23 @@ class SummaryWriters(object):
 
     def record_epoch(self, acc, precisions, global_step):
         self.summary_writer.add_scalar('accuracy', acc, global_step)
-        self.summary_writer.add_scalar('worst precision', float(min(precisions)), global_step)
+        self.summary_writer.add_scalar('worst precision', normal_scalar(min(precisions)), global_step)
         for writer, precision in zip(self.class_summary_writers, precisions):
-            writer.add_scalar('precision', float(precision), global_step)
+            writer.add_scalar('precision', normal_scalar(precision), global_step)
 
     def record_iter(self, loss, global_step, pos_rate=None, optimizer=None, criterion=None):
         if loss is not None:
-            self.summary_writer.add_scalar('loss', loss.cpu().item(), global_step)
+            self.summary_writer.add_scalar('loss', normal_scalar(loss), global_step)
 
         if isinstance(criterion, (SRI_BCELoss, SRL_BCELoss)):
             for writer, c_loss in zip(self.class_summary_writers, criterion.recent_losses):
-                writer.add_scalar('classwise_loss', c_loss.cpu().item(), global_step)
+                writer.add_scalar('classwise_loss', normal_scalar(c_loss), global_step)
 
         if pos_rate is not None:
             if isinstance(pos_rate, torch.Tensor):
                 pos_rate = pos_rate.cpu().item()
-            self.summary_writer.add_scalar('pos_rate', float(pos_rate), global_step)
+            self.summary_writer.add_scalar('pos_rate', normal_scalar(pos_rate), global_step)
 
         if optimizer is not None:
             cur_lr = optimizer.param_groups[0]['lr']
-            self.summary_writer.add_scalar('lr', float(cur_lr), global_step)
+            self.summary_writer.add_scalar('lr', normal_scalar(cur_lr), global_step)
