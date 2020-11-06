@@ -61,14 +61,18 @@ class SRI_CELoss(SRI_BCELoss):
 
 
 class SRL_BCELoss(nn.Module):
-    def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0., norm=False):
+    def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0., norm=False, pos_rate=None):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
         super(SRL_BCELoss, self).__init__()
 
         self.alpha = nn.Parameter(torch.tensor(0.).cuda())
-        self.pos_rate = self.alpha.sigmoid()
+        if pos_rate is None:
+            self.pos_rate = self.alpha.sigmoid()
+        else:
+            self.pos_rate = pos_rate
+
         self.sampler = sampler
         self.sampler.update(self.pos_rate)
         self.norm = norm
@@ -131,12 +135,13 @@ class SRL_BCELoss(nn.Module):
 
         # update pos_rate
         grad = (neg_loss - pos_loss).detach()
-        if not torch.isnan(grad):
+        if (not torch.isnan(grad)) and isinstance(self.pos_rate, torch.Tensor):
             self.optimizer.zero_grad()
             self.pos_rate.backward(grad)
             self.optimizer.step()
             self.pos_rate = self.alpha.sigmoid()
-            self.sampler.update(self.pos_rate)
+
+        self.sampler.update(self.pos_rate)
 
         return loss
 

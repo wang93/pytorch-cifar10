@@ -39,6 +39,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
+    parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
     parser.add_argument("--sri", action="store_true", help="sample rate inference or not.")
@@ -74,6 +75,7 @@ class Solver(object):
         self.sri = config.sri
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
         self.stable_bn = config.stable_bn
+        self.config = config
 
         global_variables.classes_num = len(self.classes)
 
@@ -144,7 +146,10 @@ class Solver(object):
 
             if self.srl:
                 from SampleRateLearning.loss import SRL_CELoss
-                self.criterion = SRL_CELoss(sampler=batch_sampler, optim='adam', lr=max(self.srl_lr, 0)).cuda()
+                self.criterion = SRL_CELoss(sampler=batch_sampler,
+                                            optim='adam',
+                                            lr=max(self.srl_lr, 0),
+                                            pos_rate=self.config.pos_rate).cuda()
             else:
                 from SampleRateLearning.loss import SRI_CELoss
                 self.criterion = SRI_CELoss(sampler=batch_sampler).cuda()
