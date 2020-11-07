@@ -110,7 +110,8 @@ class SRL_BCELoss(nn.Module):
 
         self.optimizer = optimizer
 
-        self.recent_losses = None
+        self.train_losses = None
+        self.val_losses = None
 
     def forward(self, scores, labels: torch.Tensor):
         losses, is_pos = self.get_losses(scores, labels)
@@ -118,15 +119,19 @@ class SRL_BCELoss(nn.Module):
             # use val data to estimate pos_loss and neg_loss
             val_losses = losses[self.sampler.batch_size:]
             val_is_pos = is_pos[self.sampler.batch_size:]
+            train_is_pos = is_pos[:self.sampler.batch_size]
             pos_loss = val_losses[val_is_pos].mean()
             neg_loss = val_losses[~val_is_pos].mean()
             train_losses = losses[:self.sampler.batch_size]
+            self.train_losses = [train_losses[~train_is_pos], train_losses[train_is_pos]]
+            self.val_losses = [neg_loss, pos_loss]
+
         else:
             pos_loss = losses[is_pos].mean()
             neg_loss = losses[~is_pos].mean()
             train_losses = losses
-
-        self.recent_losses = [pos_loss, neg_loss]
+            self.train_losses = [neg_loss, pos_loss]
+            self.val_losses = None
 
         if self.norm:
             raise NotImplementedError

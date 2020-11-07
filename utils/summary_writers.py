@@ -43,8 +43,13 @@ class SummaryWriters(object):
             self.summary_writer.add_scalar('loss', normal_scalar(loss), global_step)
 
         if isinstance(criterion, (SRI_BCELoss, SRL_BCELoss)):
-            for writer, c_loss in zip(self.class_summary_writers, criterion.recent_losses):
-                writer.add_scalar('classwise_loss', normal_scalar(c_loss), global_step)
+            if criterion.train_losses is not None:
+                for writer, t_loss in zip(self.class_summary_writers, criterion.train_losses):
+                    writer.add_scalar('train_losses', normal_scalar(t_loss), global_step)
+
+        if criterion.val_losses is not None:
+            for writer, v_loss in zip(self.class_summary_writers, criterion.val_losses):
+                writer.add_scalar('val_losses', normal_scalar(v_loss), global_step)
 
         if pos_rate is not None:
             if isinstance(pos_rate, torch.Tensor):
