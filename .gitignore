@@ -1,6 +1,6 @@
 *.idea/
 .pyc
-tasks.sh
+*tasks*
 *.pyc
 *data/
 *exps/
