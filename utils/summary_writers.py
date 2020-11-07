@@ -52,8 +52,6 @@ class SummaryWriters(object):
                 writer.add_scalar('val_losses', normal_scalar(v_loss), global_step)
 
         if pos_rate is not None:
-            if isinstance(pos_rate, torch.Tensor):
-                pos_rate = pos_rate.cpu().item()
             self.summary_writer.add_scalar('pos_rate', normal_scalar(pos_rate), global_step)
 
         if optimizer is not None:
