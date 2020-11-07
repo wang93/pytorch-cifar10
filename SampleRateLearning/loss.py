@@ -123,7 +123,7 @@ class SRL_BCELoss(nn.Module):
             pos_loss = val_losses[val_is_pos].mean()
             neg_loss = val_losses[~val_is_pos].mean()
             train_losses = losses[:self.sampler.batch_size]
-            self.train_losses = [train_losses[~train_is_pos], train_losses[train_is_pos]]
+            self.train_losses = [train_losses[~train_is_pos].mean(), train_losses[train_is_pos].mean()]
             self.val_losses = [neg_loss, pos_loss]
 
         else:
