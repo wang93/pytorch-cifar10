@@ -2,6 +2,7 @@ import torch.nn as nn
 
 
 cfg = {
+    'GAP': [],
     'VGG4S': [3, 'M', 6, 'M', 12, 'M', 12],
     'VGGSSS': [3, 'M', 6, 'M', 12, 'M', 24, 'M', 24, 'M'],
     'VGGSS': [4, 'M', 8, 'M', 16, 16, 'M', 32, 32, 'M', 32, 32, 'M'],
@@ -16,6 +17,7 @@ cfg = {
 class VGG(nn.Module):
     def __init__(self, vgg_name, class_num=10):
         super(VGG, self).__init__()
+        num_features = 3
         self.features = self._make_layers(cfg[vgg_name])
         for s in reversed(cfg[vgg_name]):
             if isinstance(s, int):
@@ -43,6 +45,10 @@ class VGG(nn.Module):
                 in_channels = x
         #layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
         return nn.Sequential(*layers)
+
+
+def GAP(class_num=10):
+    return VGG('GAP', class_num)
 
 
 def VGG4S(class_num=10):
