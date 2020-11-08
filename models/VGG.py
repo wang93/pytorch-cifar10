@@ -2,6 +2,7 @@ import torch.nn as nn
 
 
 cfg = {
+    'VGG4S': [3, 'M', 6, 'M', 12, 'M', 12],
     'VGGSSS': [3, 'M', 6, 'M', 12, 'M', 24, 'M', 24, 'M'],
     'VGGSS': [4, 'M', 8, 'M', 16, 16, 'M', 32, 32, 'M', 32, 32, 'M'],
     'VGGS': [8, 'M', 16, 'M', 32, 32, 'M', 64, 64, 'M', 64, 64, 'M'],
@@ -16,10 +17,15 @@ class VGG(nn.Module):
     def __init__(self, vgg_name, class_num=10):
         super(VGG, self).__init__()
         self.features = self._make_layers(cfg[vgg_name])
-        self.classifier = nn.Linear(cfg[vgg_name][-2], class_num, bias=False)
+        for s in reversed(cfg[vgg_name]):
+            if isinstance(s, int):
+                num_features = s
+                break
+        self.classifier = nn.Linear(num_features, class_num, bias=False)
 
     def forward(self, x):
         out = self.features(x)
+        out = nn.functional.adaptive_avg_pool2d(out, (1, 1))
         out = out.view(out.size(0), -1)
         out = self.classifier(out)
         return out
@@ -35,8 +41,12 @@ class VGG(nn.Module):
                            nn.BatchNorm2d(x),
                            nn.ReLU(inplace=True)]
                 in_channels = x
-        layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
+        #layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
         return nn.Sequential(*layers)
+
+
+def VGG4S(class_num=10):
+    return VGG('VGG4S', class_num)
 
 
 def VGGSSS(class_num=10):
