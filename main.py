@@ -166,6 +166,7 @@ class Solver(object):
     def load_model(self):
         model_factory = {
             'lenet': LeNet,
+            'vggsss': VGGSSS,
             'vggss': VGGSS,
             'vggs': VGGS,
             'vgg11': VGG11,
