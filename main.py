@@ -153,7 +153,9 @@ class Solver(object):
                 self.criterion = SRL_CELoss(sampler=batch_sampler,
                                             optim='adam',
                                             lr=max(self.srl_lr, 0),
-                                            pos_rate=self.config.pos_rate).cuda()
+                                            pos_rate=self.config.pos_rate,
+                                            in_train=self.config.srl_in_train
+                                            ).cuda()
             else:
                 from SampleRateLearning.loss import SRI_CELoss
                 self.criterion = SRI_CELoss(sampler=batch_sampler).cuda()
