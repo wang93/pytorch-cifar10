@@ -61,7 +61,7 @@ class SRI_CELoss(SRI_BCELoss):
 
 
 class SRL_BCELoss(nn.Module):
-    def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0., norm=False, pos_rate=None):
+    def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0., norm=False, pos_rate=None, in_train=True):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
@@ -76,6 +76,7 @@ class SRL_BCELoss(nn.Module):
         self.sampler = sampler
         self.sampler.update(self.pos_rate)
         self.norm = norm
+        self.in_train = in_train
 
         param_groups = [{'params': [self.alpha]}]
         if optim == "sgd":
@@ -116,15 +117,28 @@ class SRL_BCELoss(nn.Module):
     def forward(self, scores, labels: torch.Tensor):
         losses, is_pos = self.get_losses(scores, labels)
         if is_pos.size(0) > self.sampler.batch_size:
-            # use val data to estimate pos_loss and neg_loss
-            val_losses = losses[self.sampler.batch_size:]
-            val_is_pos = is_pos[self.sampler.batch_size:]
-            train_is_pos = is_pos[:self.sampler.batch_size]
-            pos_loss = val_losses[val_is_pos].mean()
-            neg_loss = val_losses[~val_is_pos].mean()
-            train_losses = losses[:self.sampler.batch_size]
-            self.train_losses = [train_losses[~train_is_pos].mean(), train_losses[train_is_pos].mean()]
-            self.val_losses = [neg_loss, pos_loss]
+            if not self.in_train:
+                # use val data to estimate pos_loss and neg_loss
+                val_losses = losses[self.sampler.batch_size:]
+                val_is_pos = is_pos[self.sampler.batch_size:]
+                train_is_pos = is_pos[:self.sampler.batch_size]
+                pos_loss = val_losses[val_is_pos].mean()
+                neg_loss = val_losses[~val_is_pos].mean()
+                train_losses = losses[:self.sampler.batch_size]
+                self.train_losses = [train_losses[~train_is_pos].mean(), train_losses[train_is_pos].mean()]
+                self.val_losses = [neg_loss, pos_loss]
+            else:
+                val_losses = losses[self.sampler.batch_size:]
+                val_is_pos = is_pos[self.sampler.batch_size:]
+                val_pos_loss = val_losses[val_is_pos].mean()
+                val_neg_loss = val_losses[~val_is_pos].mean()
+                train_is_pos = is_pos[:self.sampler.batch_size]
+                train_losses = losses[:self.sampler.batch_size]
+                pos_loss = train_losses[train_is_pos].mean()
+                neg_loss = train_losses[~train_is_pos].mean()
+                self.train_losses = [neg_loss, pos_loss]
+                self.val_losses = [val_neg_loss, val_pos_loss]
+
 
         else:
             pos_loss = losses[is_pos].mean()

@@ -39,12 +39,16 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
+    parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
     parser.add_argument("--sri", action="store_true", help="sample rate inference or not.")
     parser.add_argument('--stable_bn', default=-1, type=int, help='version of stable bn')
     args = parser.parse_args()
+
+    if args.srl and args.val_ratio <= 0.:
+        args.srl_in_train = True
 
     prepare_running(args)
     solver = Solver(args)
