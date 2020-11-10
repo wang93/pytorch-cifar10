@@ -3,6 +3,21 @@ from torch.optim.adamw import AdamW
 
 
 class AdamMW(AdamW):
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.9), eps=1e-8,
+                 weight_decay=1e-2, amsgrad=False):
+        if not 0.0 <= lr:
+            raise ValueError("Invalid learning rate: {}".format(lr))
+        if not 0.0 <= eps:
+            raise ValueError("Invalid epsilon value: {}".format(eps))
+        if not 0.0 <= betas[0] < 1.0:
+            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
+        if not 0.0 <= betas[1] < 1.0:
+            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
+        if not 0.0 <= weight_decay:
+            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
+        defaults = dict(lr=lr, betas=betas, eps=eps,
+                        weight_decay=weight_decay, amsgrad=amsgrad)
+        super(AdamW, self).__init__(params, defaults)
 
     @torch.no_grad()
     def step(self, closure=None):
@@ -50,24 +65,23 @@ class AdamMW(AdamW):
                 beta1, beta2 = group['betas']
 
                 state['step'] += 1
-                cur_beta1 = beta1 #- beta1 ** state['step']
-                cur_beta2 = beta2 #- beta2 ** state['step']
+                cur_beta1 = beta1 - beta1 ** state['step']
+                cur_beta2 = beta2 - beta2 ** state['step']
 
                 # Decay the first and second moment running average coefficient
                 exp_avg.mul_(cur_beta1).add_(grad, alpha=1 - cur_beta1)
-                # exp_avg_sq.mul_(cur_beta2).addcmul_(grad, grad, value=1 - cur_beta2)
-                exp_avg_sq.mul_(cur_beta2).add_(abs(grad), alpha=1 - cur_beta2)
+                exp_avg_sq.mul_(cur_beta2).addcmul_(grad, grad, value=1 - cur_beta2)
+                # exp_avg_sq.mul_(cur_beta2).add_(abs(grad), alpha=1 - cur_beta2)
                 if amsgrad:
                     # Maintains the maximum of all 2nd moment running avg. till now
                     torch.maximum(max_exp_avg_sq, exp_avg_sq, out=max_exp_avg_sq)
                     # Use the max. for normalizing running avg. of gradient
                     denom = max_exp_avg_sq.sqrt().add_(group['eps'])
                 else:
-                    # denom = exp_avg_sq.sqrt().add_(group['eps'])
-                    denom = exp_avg_sq.add_(group['eps'])
+                    denom = exp_avg_sq.sqrt().add_(group['eps'])
+                    # denom = exp_avg_sq.add_(group['eps'])
 
-                step_size = group['lr']
-                p.add_(exp_avg, alpha=-step_size)
-                # p.addcdiv_(exp_avg, denom, value=-step_size)
+                step_size = -group['lr']
+                p.addcdiv_(exp_avg, denom, value=step_size)
 
         return loss
