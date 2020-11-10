@@ -207,10 +207,10 @@ class Solver(object):
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         elif self.config.optim == 'adamw':
-            self.optimizer = optim.AdamW(self.model.parameters(), lr=self.lr)
+            self.optimizer = optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=0.)
         elif self.config.optim == 'adammw':
             from utils.optimizers import AdamMW
-            self.optimizer = AdamMW(self.model.parameters(), lr=self.lr)
+            self.optimizer = AdamMW(self.model.parameters(), lr=self.lr, weight_decay=0.)
         else:
             raise NotImplementedError
 
