@@ -103,6 +103,14 @@ class SRL_BCELoss(nn.Module):
                               betas=(0.9, 0.999),
                               eps=1e-8,
                               amsgrad=False)
+
+        elif optim == 'adammw':
+            from utils.optimizers import AdamMW
+            default = {'lr': lr, 'weight_decay': weight_decay}
+            optimizer = AdamMW(param_groups, **default,
+                               betas=(0.9, 0.999),
+                               eps=1e-8,
+                               amsgrad=False)
         else:
             raise NotImplementedError
 

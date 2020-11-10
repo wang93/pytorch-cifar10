@@ -27,6 +27,7 @@ CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 def main():
     parser = argparse.ArgumentParser(description="cifar-10 with PyTorch")
     parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
+    parser.add_argument('--optim', default='adam', type=str, help='the optimizer for model')
     parser.add_argument('--epoch', default=200, type=int, help='number of epochs tp train for')
     parser.add_argument('--trainBatchSize', default=100, type=int, help='training batch size')
     parser.add_argument('--testBatchSize', default=100, type=int, help='testing batch size')
@@ -39,6 +40,7 @@ def main():
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
+    parser.add_argument('--srl_optim', default='adam', type=str, help='the optimizer for srl')
     parser.add_argument('--srl_norm', action="store_true", help="use normed srl")
     parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
@@ -152,7 +154,7 @@ class Solver(object):
             if self.srl:
                 from SampleRateLearning.loss import SRL_CELoss
                 self.criterion = SRL_CELoss(sampler=batch_sampler,
-                                            optim='adam',
+                                            optim=self.config.srl_optim,
                                             lr=max(self.srl_lr, 0),
                                             pos_rate=self.config.pos_rate,
                                             in_train=self.config.srl_in_train,
@@ -202,7 +204,16 @@ class Solver(object):
             model = sbn.convert_model(model)
 
         self.model = nn.DataParallel(model).cuda()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+        if self.config.optim is 'adam':
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+        elif self.config.optim is 'adamw':
+            self.optimizer = optim.AdamW(self.model.parameters(), lr=self.lr)
+        elif self.config.optim is 'adammw':
+            from utils.optimizers import AdamMW
+            self.optimizer = AdamMW(self.model.parameters(), lr=self.lr)
+        else:
+            raise NotImplementedError
+
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
 
     def train(self, epoch):
