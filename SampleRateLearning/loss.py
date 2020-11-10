@@ -125,7 +125,9 @@ class SRL_BCELoss(nn.Module):
                 pos_loss = val_losses[val_is_pos].mean()
                 neg_loss = val_losses[~val_is_pos].mean()
                 train_losses = losses[:self.sampler.batch_size]
-                self.train_losses = [train_losses[~train_is_pos].mean(), train_losses[train_is_pos].mean()]
+                train_pos_loss = train_losses[train_is_pos].mean()
+                train_neg_loss = train_losses[~train_is_pos].mean()
+                self.train_losses = [train_neg_loss, train_pos_loss]
                 self.val_losses = [neg_loss, pos_loss]
             else:
                 val_losses = losses[self.sampler.batch_size:]
@@ -134,21 +136,20 @@ class SRL_BCELoss(nn.Module):
                 val_neg_loss = val_losses[~val_is_pos].mean()
                 train_is_pos = is_pos[:self.sampler.batch_size]
                 train_losses = losses[:self.sampler.batch_size]
-                pos_loss = train_losses[train_is_pos].mean()
-                neg_loss = train_losses[~train_is_pos].mean()
+                train_pos_loss = pos_loss = train_losses[train_is_pos].mean()
+                train_neg_loss = neg_loss = train_losses[~train_is_pos].mean()
                 self.train_losses = [neg_loss, pos_loss]
                 self.val_losses = [val_neg_loss, val_pos_loss]
 
-
         else:
-            pos_loss = losses[is_pos].mean()
-            neg_loss = losses[~is_pos].mean()
+            train_pos_loss = pos_loss = losses[is_pos].mean()
+            train_neg_loss = neg_loss = losses[~is_pos].mean()
             train_losses = losses
             self.train_losses = [neg_loss, pos_loss]
             self.val_losses = None
 
         if self.norm:
-            raise NotImplementedError
+            loss = (train_neg_loss + train_pos_loss) / 2.
         else:
             loss = train_losses.mean()
 
