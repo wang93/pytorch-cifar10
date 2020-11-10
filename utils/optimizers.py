@@ -50,8 +50,8 @@ class AdamMW(AdamW):
                 beta1, beta2 = group['betas']
 
                 state['step'] += 1
-                cur_beta1 = beta1 - beta1 ** state['step']
-                cur_beta2 = beta2 - beta2 ** state['step']
+                cur_beta1 = beta1 #- beta1 ** state['step']
+                cur_beta2 = beta2 #- beta2 ** state['step']
 
                 # Decay the first and second moment running average coefficient
                 exp_avg.mul_(cur_beta1).add_(grad, alpha=1 - cur_beta1)
