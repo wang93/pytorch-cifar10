@@ -67,6 +67,7 @@ class AdamMW(AdamW):
                     denom = exp_avg_sq.add_(group['eps'])
 
                 step_size = group['lr']
-                p.addcdiv_(exp_avg, denom, value=-step_size)
+                p.add_(exp_avg, alpha=-step_size)
+                # p.addcdiv_(exp_avg, denom, value=-step_size)
 
         return loss
