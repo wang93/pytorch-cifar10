@@ -204,11 +204,11 @@ class Solver(object):
             model = sbn.convert_model(model)
 
         self.model = nn.DataParallel(model).cuda()
-        if self.config.optim is 'adam':
+        if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-        elif self.config.optim is 'adamw':
+        elif self.config.optim == 'adamw':
             self.optimizer = optim.AdamW(self.model.parameters(), lr=self.lr)
-        elif self.config.optim is 'adammw':
+        elif self.config.optim == 'adammw':
             from utils.optimizers import AdamMW
             self.optimizer = AdamMW(self.model.parameters(), lr=self.lr)
         else:
