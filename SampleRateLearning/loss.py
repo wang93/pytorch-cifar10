@@ -87,21 +87,21 @@ class SRL_BCELoss(nn.Module):
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = Adam(param_groups, **default,
                              betas=(0.9, 0.999),
-                             eps=1e-8,
+                             eps=0.,
                              amsgrad=False)
 
         elif optim == 'amsgrad':
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = Adam(param_groups, **default,
                              betas=(0.9, 0.999),
-                             eps=1e-8,
+                             eps=0.,
                              amsgrad=True)
 
         elif optim == 'adamw':
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = AdamW(param_groups, **default,
                               betas=(0.9, 0.999),
-                              eps=1e-8,
+                              eps=0.,
                               amsgrad=False)
 
         elif optim == 'adammw':
@@ -109,7 +109,7 @@ class SRL_BCELoss(nn.Module):
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = AdamMW(param_groups, **default,
                                betas=(0.9, 0.999),
-                               eps=1e-8,
+                               eps=0.,
                                amsgrad=False)
         else:
             raise NotImplementedError
