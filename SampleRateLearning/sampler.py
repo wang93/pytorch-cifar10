@@ -1,7 +1,9 @@
 from __future__ import absolute_import
 
-from numpy import clip
+# from numpy import clip
 from torch.utils.data.sampler import Sampler
+# from torch.distributions.binomial import Binomial
+from numpy.random import binomial
 
 from queue import Queue
 from random import sample as randsample
@@ -71,7 +73,8 @@ class SampleRateBatchSampler(SampleRateSampler):
         if self.cur_idx >= self.length:
             raise StopIteration
 
-        b_num = round(self.batch_size * self.pos_rate)
+        # b_num = round(self.batch_size * self.pos_rate)
+        b_num = binomial(self.batch_size, self.pos_rate)
         # a_num = int(clip(a_num, 1, self.batch_size-1))
         a_num = self.batch_size - b_num
         batch = self.sample_agents[0].select(a_num) + self.sample_agents[1].select(b_num)
