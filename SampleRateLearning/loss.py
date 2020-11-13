@@ -100,7 +100,7 @@ class SRL_BCELoss(nn.Module):
         elif optim == 'adamw':
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = AdamW(param_groups, **default,
-                              betas=(0.9, 0.999),
+                              betas=(0., 0.999),
                               eps=0.,
                               amsgrad=False)
 
