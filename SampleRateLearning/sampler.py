@@ -74,8 +74,8 @@ class SampleRateBatchSampler(SampleRateSampler):
             raise StopIteration
 
         # b_num = binomial(self.batch_size, self.pos_rate)
-        b_num = round((self.batch_size - 2) * self.pos_rate) + 1
-        # b_num = int(clip(b_num, 1, self.batch_size-1))
+        b_num = round(self.batch_size * self.pos_rate)
+        b_num = int(clip(b_num, 1, self.batch_size-1))
         a_num = self.batch_size - b_num
         batch = self.sample_agents[0].select(a_num) + self.sample_agents[1].select(b_num)
 
