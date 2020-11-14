@@ -127,57 +127,78 @@ class SRL_BCELoss(nn.Module):
         if is_pos.size(0) > self.sampler.batch_size:
             if not self.in_train:
                 # use val data to estimate pos_loss and neg_loss
-                _, val_prediction = torch.max(scores[self.sampler.batch_size:], 1)
+                val_losses = losses[self.sampler.batch_size:]
                 val_is_pos = is_pos[self.sampler.batch_size:]
-                val_pos_pred = val_prediction[val_is_pos]
-                val_neg_pred = val_prediction[~val_is_pos]
-                val_pos_prec = sum(val_pos_pred == 1) / float(len(val_pos_pred))
-                val_neg_prec = sum(val_neg_pred == 0) / float(len(val_neg_pred))
-                pos_loss = - val_pos_prec
-                neg_loss = - val_neg_prec
-
-                train_losses = losses[:self.sampler.batch_size]
                 train_is_pos = is_pos[:self.sampler.batch_size]
+                pos_loss = val_losses[val_is_pos].mean()
+                neg_loss = val_losses[~val_is_pos].mean()
+                train_losses = losses[:self.sampler.batch_size]
                 train_pos_loss = train_losses[train_is_pos].mean()
                 train_neg_loss = train_losses[~train_is_pos].mean()
-
                 self.train_losses = [train_neg_loss, train_pos_loss]
                 self.val_losses = [neg_loss, pos_loss]
             else:
-                raise NotImplementedError
-                # val_losses = losses[self.sampler.batch_size:]
-                # val_is_pos = is_pos[self.sampler.batch_size:]
-                # val_pos_loss = val_losses[val_is_pos].mean()
-                # val_neg_loss = val_losses[~val_is_pos].mean()
-                # train_is_pos = is_pos[:self.sampler.batch_size]
-                # train_losses = losses[:self.sampler.batch_size]
-                # train_pos_loss = pos_loss = train_losses[train_is_pos].mean()
-                # train_neg_loss = neg_loss = train_losses[~train_is_pos].mean()
-                # self.train_losses = [neg_loss, pos_loss]
-                # self.val_losses = [val_neg_loss, val_pos_loss]
-
-        else:
-            train_losses = losses
-
-            if self.training:
-                train_pos_loss = losses[is_pos].mean()
-                train_neg_loss = losses[~is_pos].mean()
-                _, prediction = torch.max(scores, 1)
-                pos_pred = prediction[is_pos]
-                neg_pred = prediction[~is_pos]
-                pos_prec = sum(pos_pred == 1) / float(len(pos_pred))
-                neg_prec = sum(neg_pred == 0) / float(len(neg_pred))
-                pos_loss = -pos_prec
-                neg_loss = -neg_prec
-
+                val_losses = losses[self.sampler.batch_size:]
+                val_is_pos = is_pos[self.sampler.batch_size:]
+                val_pos_loss = val_losses[val_is_pos].mean()
+                val_neg_loss = val_losses[~val_is_pos].mean()
+                train_is_pos = is_pos[:self.sampler.batch_size]
+                train_losses = losses[:self.sampler.batch_size]
+                train_pos_loss = pos_loss = train_losses[train_is_pos].mean()
+                train_neg_loss = neg_loss = train_losses[~train_is_pos].mean()
                 self.train_losses = [neg_loss, pos_loss]
-                self.val_losses = None
+                self.val_losses = [val_neg_loss, val_pos_loss]
 
-        if self.norm:
-            raise NotImplementedError
-            # loss = (train_neg_loss + train_pos_loss) / 2.
         else:
-            loss = train_losses.mean()
+            train_pos_loss = pos_loss = losses[is_pos].mean()
+            train_neg_loss = neg_loss = losses[~is_pos].mean()
+            train_losses = losses
+            self.train_losses = [neg_loss, pos_loss]
+            self.val_losses = None
+
+        #     losses, is_pos = self.get_losses(scores, labels)
+    #     if is_pos.size(0) > self.sampler.batch_size:
+    #         if not self.in_train:
+    #             # use val data to estimate pos_loss and neg_loss
+    #             _, val_prediction = torch.max(scores[self.sampler.batch_size:], 1)
+    #             val_is_pos = is_pos[self.sampler.batch_size:]
+    #             val_pos_pred = val_prediction[val_is_pos]
+    #             val_neg_pred = val_prediction[~val_is_pos]
+    #             val_pos_prec = sum(val_pos_pred == 1) / float(len(val_pos_pred))
+    #             val_neg_prec = sum(val_neg_pred == 0) / float(len(val_neg_pred))
+    #             pos_loss = - val_pos_prec
+    #             neg_loss = - val_neg_prec
+    #
+    #             train_losses = losses[:self.sampler.batch_size]
+    #             train_is_pos = is_pos[:self.sampler.batch_size]
+    #             train_pos_loss = train_losses[train_is_pos].mean()
+    #             train_neg_loss = train_losses[~train_is_pos].mean()
+    #
+    #             self.train_losses = [train_neg_loss, train_pos_loss]
+    #             self.val_losses = [neg_loss, pos_loss]
+    #         else:
+    #             raise NotImplementedError
+    #
+    #     else:
+    #         train_losses = losses
+    #
+    #         if self.training:
+    #             _, prediction = torch.max(scores, 1)
+    #             pos_pred = prediction[is_pos]
+    #             neg_pred = prediction[~is_pos]
+    #             pos_prec = sum(pos_pred == 1) / float(len(pos_pred))
+    #             neg_prec = sum(neg_pred == 0) / float(len(neg_pred))
+    #             pos_loss = -pos_prec
+    #             neg_loss = -neg_prec
+    #
+    #             self.train_losses = [neg_loss, pos_loss]
+    #             self.val_losses = None
+    #
+    #     if self.norm:
+    #         raise NotImplementedError
+    #         # loss = (train_neg_loss + train_pos_loss) / 2.
+    #     else:
+    #         loss = train_losses.mean()
 
         # update pos_rate
         if self.training:
