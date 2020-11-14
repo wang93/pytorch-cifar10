@@ -157,23 +157,25 @@ class SRL_BCELoss(nn.Module):
                 # self.val_losses = [val_neg_loss, val_pos_loss]
 
         else:
-            train_pos_loss = losses[is_pos].mean()
-            train_neg_loss = losses[~is_pos].mean()
             train_losses = losses
 
-            _, prediction = torch.max(scores, 1)
-            pos_pred = prediction[is_pos]
-            neg_pred = prediction[~is_pos]
-            pos_prec = sum(pos_pred == 1) / float(len(pos_pred))
-            neg_prec = sum(neg_pred == 0) / float(len(neg_pred))
-            pos_loss = -pos_prec
-            neg_loss = -neg_prec
+            if self.training:
+                train_pos_loss = losses[is_pos].mean()
+                train_neg_loss = losses[~is_pos].mean()
+                _, prediction = torch.max(scores, 1)
+                pos_pred = prediction[is_pos]
+                neg_pred = prediction[~is_pos]
+                pos_prec = sum(pos_pred == 1) / float(len(pos_pred))
+                neg_prec = sum(neg_pred == 0) / float(len(neg_pred))
+                pos_loss = -pos_prec
+                neg_loss = -neg_prec
 
-            self.train_losses = [neg_loss, pos_loss]
-            self.val_losses = None
+                self.train_losses = [neg_loss, pos_loss]
+                self.val_losses = None
 
         if self.norm:
-            loss = (train_neg_loss + train_pos_loss) / 2.
+            raise NotImplementedError
+            # loss = (train_neg_loss + train_pos_loss) / 2.
         else:
             loss = train_losses.mean()
 
