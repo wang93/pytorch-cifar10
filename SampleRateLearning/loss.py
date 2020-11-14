@@ -193,12 +193,11 @@ class SRL_BCELoss(nn.Module):
     #
     #             self.train_losses = [neg_loss, pos_loss]
     #             self.val_losses = None
-    #
-    #     if self.norm:
-    #         raise NotImplementedError
-    #         # loss = (train_neg_loss + train_pos_loss) / 2.
-    #     else:
-    #         loss = train_losses.mean()
+
+        if self.norm:
+            loss = (train_neg_loss + train_pos_loss) / 2.
+        else:
+            loss = train_losses.mean()
 
         # update pos_rate
         if self.training:
