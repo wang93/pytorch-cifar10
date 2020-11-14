@@ -2,23 +2,16 @@ import torch.optim as optim
 import torch.utils.data
 import torchvision
 from torchvision import transforms as transforms
-
 import argparse
-
 from models import *
-
 from sklearn.metrics import confusion_matrix
 import numpy as np
 from os.path import join
 from importlib import import_module
-
 import random
-
 from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
-
 from SampleRateLearning.stable_batchnorm import global_variables
-
 from copy import deepcopy
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
