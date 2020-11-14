@@ -179,7 +179,7 @@ class SRL_BCELoss(nn.Module):
 
         # update pos_rate
         grad = (neg_loss - pos_loss).detach()
-        if (not torch.isnan(grad)) and isinstance(self.pos_rate, torch.Tensor):
+        if (not torch.isnan(grad)) and isinstance(self.pos_rate, torch.Tensor) and self.training:
             self.optimizer.zero_grad()
             self.pos_rate.backward(grad)
             self.optimizer.step()

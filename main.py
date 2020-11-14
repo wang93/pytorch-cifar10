@@ -211,6 +211,9 @@ class Solver(object):
 
     def train(self, epoch):
         self.model.train()
+        if isinstance(self.criterion, nn.Module):
+            self.criterion.train()
+
         train_loss = 0
         train_correct = 0
         total = 0
@@ -262,6 +265,9 @@ class Solver(object):
     def test(self, epoch):
         # print("test:")
         self.model.eval()
+        if isinstance(self.criterion, nn.Module):
+            self.criterion.eval()
+
         test_loss = 0
         test_correct = 0
         total = 0
