@@ -166,7 +166,7 @@ class SRL_BCELoss(nn.Module):
                 val_pos_pred = val_scores[val_is_pos, 1]
                 val_neg_pred = val_scores[~val_is_pos, 0]
                 val_pos_prec = sum(val_pos_pred) / float(len(val_pos_pred))
-                val_neg_prec = sum(1-val_neg_pred) / float(len(val_neg_pred))
+                val_neg_prec = sum(val_neg_pred) / float(len(val_neg_pred))
                 pos_loss = - val_pos_prec
                 neg_loss = - val_neg_prec
 
