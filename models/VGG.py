@@ -3,6 +3,7 @@ import torch.nn as nn
 
 cfg = {
     'GAP': [],
+    'VGG7S': [3, ],
     'VGG4S': [3, 'M', 6, 'M', 12, 'M', 12],
     'VGGSSS': [3, 'M', 6, 'M', 12, 'M', 24, 'M', 24, 'M'],
     'VGGSS': [4, 'M', 8, 'M', 16, 16, 'M', 32, 32, 'M', 32, 32, 'M'],
@@ -49,6 +50,10 @@ class VGG(nn.Module):
 
 def GAP(class_num=10):
     return VGG('GAP', class_num)
+
+
+def VGG7S(class_num=10):
+    return VGG('VGG7S', class_num)
 
 
 def VGG4S(class_num=10):

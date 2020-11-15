@@ -170,6 +170,7 @@ class Solver(object):
         model_factory = {
             'lenet': LeNet,
             'gap': GAP,
+            'vgg7s': VGG7S,
             'vgg4s': VGG4S,
             'vggsss': VGGSSS,
             'vggss': VGGSS,
