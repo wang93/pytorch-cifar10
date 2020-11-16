@@ -78,6 +78,7 @@ class Solver(object):
         self.config = config
 
         global_variables.classes_num = len(self.classes)
+        global_variables.train_batch_size = self.train_batch_size
 
         if self.srl and len(self.classes) != 2:
             raise NotImplementedError
