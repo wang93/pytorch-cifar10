@@ -1,7 +1,7 @@
 # encoding: utf-8
 # author: Yicheng Wang
 # contact: wyc@whu.edu.cn
-# datetime:2020/9/28 8:14
+# datetime:2020/11/16 10:08
 
 """
 class-wise estimation,
@@ -10,6 +10,7 @@ biased estimation,
 bias-corrected,
 stds via total running_mean,
 .../(eps + std)
+current mean and std when training
 """
 
 import torch
@@ -61,16 +62,20 @@ class _BatchNorm(origin_BN):
             if len(indices) != self.num_classes:
                 raise ValueError
 
+            cls_means = []
             for c, group in enumerate(indices):
                 if len(group) == 0:
                     continue
                 self.num_batches_tracked[c] += 1
                 samples = data[group]
                 mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
+                cls_means.append(mean)
                 self.running_cls_means[:, c] = (1 - self.momentum) * self.running_cls_means[:, c] + self.momentum * mean
 
             correction_factors = (1. - (1. - self.momentum) ** self.num_batches_tracked)
             self.running_mean = (self.running_cls_means / correction_factors).mean(dim=1, keepdim=False)
+            current_mean = sum(cls_means) / float(len(cls_means))
+            current_data = data - self.expand(current_mean, sz)
             data = data - self.expand(self.running_mean, sz)
 
             for c, group in enumerate(indices):
@@ -83,9 +88,22 @@ class _BatchNorm(origin_BN):
             # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
             self.running_var = (self.running_cls_stds / correction_factors).mean(dim=1, keepdim=False)
 
-        # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
-        y = (input - self.expand(self.running_mean, sz)) \
-            / self.expand((self.running_var + self.eps), sz)
+            current_stds = []
+            for c, group in enumerate(indices):
+                if len(group) == 0:
+                    continue
+                samples = current_data[group]
+                std = samples.square().mean(dim=reduced_dim, keepdim=False).sqrt()
+                current_stds.append(std)
+            current_std = sum(current_stds) / float(len(current_stds))
+
+            y = (input - self.expand(current_mean, sz)) \
+                / self.expand((current_std + self.eps), sz)
+
+        else:
+            # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
+            y = (input - self.expand(self.running_mean, sz)) \
+                / self.expand((self.running_var + self.eps), sz)
 
         if self.affine:
             z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)
