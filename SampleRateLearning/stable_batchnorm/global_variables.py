@@ -3,8 +3,8 @@ import torch
 classes_num = 0
 indices = [[]]
 #braid_indices = [[]]
-batch_size = None
-train_batch_size = None
+batch_size = 0
+train_batch_size = 0
 
 
 def parse_target(target):
@@ -19,8 +19,10 @@ def parse_target(target):
         raise TypeError
 
     indices = [[] for _ in range(classes_num)]
-    for i, e in enumerate(target[:train_batch_size]):
-        indices[int(e)].append(i)
+    # for i, e in enumerate(target[:train_batch_size]):
+    #     indices[int(e)].append(i)
+    for i, e in enumerate(target[train_batch_size:]):
+        indices[int(e)].append(i+train_batch_size)
 
     batch_size = len(target)
     # braid_indices = []
