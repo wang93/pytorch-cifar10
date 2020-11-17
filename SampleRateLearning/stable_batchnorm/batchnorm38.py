@@ -9,6 +9,7 @@ import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
 from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
 
+
 class _BatchNorm(origin_BN):
     @staticmethod
     def expand(stat, target_size):
