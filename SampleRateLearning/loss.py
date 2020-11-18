@@ -156,45 +156,6 @@ class SRL_BCELoss(nn.Module):
             self.train_losses = [neg_loss, pos_loss]
             self.val_losses = None
 
-        # losses, is_pos = self.get_losses(scores, labels)
-        # if is_pos.size(0) > self.sampler.batch_size:
-        #     if not self.in_train:
-        #         # use val data to estimate pos_loss and neg_loss
-        #         # _, val_prediction = torch.max(scores[self.sampler.batch_size:], 1)
-        #         val_scores = scores[self.sampler.batch_size:]
-        #         val_is_pos = is_pos[self.sampler.batch_size:]
-        #         val_pos_pred = val_scores[val_is_pos, 1]
-        #         val_neg_pred = val_scores[~val_is_pos, 0]
-        #         val_pos_prec = sum(val_pos_pred) / float(len(val_pos_pred))
-        #         val_neg_prec = sum(val_neg_pred) / float(len(val_neg_pred))
-        #         pos_loss = - val_pos_prec
-        #         neg_loss = - val_neg_prec
-        #
-        #         train_losses = losses[:self.sampler.batch_size]
-        #         train_is_pos = is_pos[:self.sampler.batch_size]
-        #         train_pos_loss = train_losses[train_is_pos].mean()
-        #         train_neg_loss = train_losses[~train_is_pos].mean()
-        #
-        #         self.train_losses = [train_neg_loss, train_pos_loss]
-        #         self.val_losses = [neg_loss, pos_loss]
-        #     else:
-        #         raise NotImplementedError
-        #
-        # else:
-        #     train_losses = losses
-        #
-        #     if self.training:
-        #         _, prediction = torch.max(scores, 1)
-        #         pos_pred = prediction[is_pos]
-        #         neg_pred = prediction[~is_pos]
-        #         pos_prec = sum(pos_pred == 1) / float(len(pos_pred))
-        #         neg_prec = sum(neg_pred == 0) / float(len(neg_pred))
-        #         pos_loss = -pos_prec
-        #         neg_loss = -neg_prec
-        #
-        #         self.train_losses = [neg_loss, pos_loss]
-        #         self.val_losses = None
-
         if self.norm:
             loss = (train_neg_loss + train_pos_loss) / 2.
         else:
@@ -207,7 +168,7 @@ class SRL_BCELoss(nn.Module):
                 self.optimizer.zero_grad()
                 self.pos_rate.backward(grad)
                 self.optimizer.step()
-                self.pos_rate = self.alpha.sigmoid()
+                self.pos_rate = (self.alpha * 3.).sigmoid()
                 self.sampler.update(self.pos_rate)
 
         return loss
