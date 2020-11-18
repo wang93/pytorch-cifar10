@@ -129,8 +129,13 @@ class Solver(object):
         return train_set, val_set
 
     def load_data(self):
-        train_transform = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.ToTensor()])
-        test_transform = transforms.Compose([transforms.ToTensor()])
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+        train_transform = transforms.Compose([transforms.RandomHorizontalFlip(),
+                                              transforms.RandomCrop(32, 4),
+                                              transforms.ToTensor(),
+                                              normalize])
+        test_transform = transforms.Compose([transforms.ToTensor(), normalize])
 
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
         train_set, val_set = self._sub_data(train_set, self.classes, self.ratios, self.val_ratio)
