@@ -21,7 +21,10 @@ class BasicBlock(nn.Module):
         self.stride = stride
 
     def forward(self, x):
-        residual = x
+        if self.downsample is not None:
+            residual = self.downsample(x)
+        else:
+            residual = x
 
         x = self.conv1(x)
         x = self.bn1(x)
@@ -30,10 +33,7 @@ class BasicBlock(nn.Module):
         x = self.conv2(x)
         x = self.bn2(x)
 
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        x += residual
+        x = x + residual
         x = self.relu(x)
 
         return x
@@ -55,7 +55,10 @@ class Bottleneck(nn.Module):
         self.stride = stride
 
     def forward(self, x):
-        residual = x
+        if self.downsample is not None:
+            residual = self.downsample(x)
+        else:
+            residual = x
 
         x = self.conv1(x)
         x = self.bn1(x)
@@ -68,17 +71,13 @@ class Bottleneck(nn.Module):
         x = self.conv3(x)
         x = self.bn3(x)
 
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        x += residual
+        x = x + residual
         x = self.relu(x)
 
         return x
 
 
 class ResNet(nn.Module):
-
     def __init__(self, block, layers, class_num=10):
         self.inplanes = 64
         super(ResNet, self).__init__()
