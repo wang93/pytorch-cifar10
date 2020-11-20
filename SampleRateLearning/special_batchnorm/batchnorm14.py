@@ -1,20 +1,21 @@
 # encoding: utf-8
 # author: Yicheng Wang
 # contact: wyc@whu.edu.cn
-# datetime:2020/9/28 8:14
+# datetime:2020/9/30 9:55
 
 """
 class-wise estimation,
 moving-average,
 biased estimation,
 bias-corrected,
-stds via total running_mean,
-.../(eps + std)
+mapes via total running_mean,
+.../(eps + mape)
 """
 
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from warnings import warn
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):
@@ -31,7 +32,9 @@ class _BatchNorm(origin_BN):
         self.num_classes = num_classes
         self.num_batches_tracked = torch.zeros(num_classes, dtype=torch.long)
         self.register_buffer('running_cls_means', torch.zeros(num_features,  num_classes))
-        self.register_buffer('running_cls_stds', torch.zeros(num_features, num_classes))
+        self.register_buffer('running_cls_mapes', torch.zeros(num_features, num_classes))
+
+        self.relu = torch.nn.functional.relu
 
     def _check_input_dim(self, input):
         raise NotImplementedError
@@ -72,18 +75,19 @@ class _BatchNorm(origin_BN):
             correction_factors = (1. - (1. - self.momentum) ** self.num_batches_tracked)
             self.running_mean = (self.running_cls_means / correction_factors).mean(dim=1, keepdim=False)
             data = data - self.expand(self.running_mean, sz)
+            data = self.relu(data, inplace=True)
 
             for c, group in enumerate(indices):
                 if len(group) == 0:
                     continue
                 samples = data[group]
-                std = samples.square().mean(dim=reduced_dim, keepdim=False).sqrt()
-                self.running_cls_stds[:, c] = (1 - self.momentum) * self.running_cls_stds[:, c] + self.momentum * std
+                mape = samples.abs().mean(dim=reduced_dim, keepdim=False)
+                self.running_cls_mapes[:, c] = (1 - self.momentum) * self.running_cls_mapes[:, c] + self.momentum * mape
 
-            # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
-            self.running_var = (self.running_cls_stds / correction_factors).mean(dim=1, keepdim=False)
+            # Note: the running_var is running_mape indeed, for convenience of external calling, it has not been renamed.
+            self.running_var = (self.running_cls_mapes / correction_factors).mean(dim=1, keepdim=False)
 
-        # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
+        # Note: the running_var is running_mape indeed, for convenience of external calling, it has not been renamed.
         y = (input - self.expand(self.running_mean, sz)) \
             / self.expand((self.running_var + self.eps), sz)
 
@@ -145,3 +149,4 @@ def convert_model(module):
         mod.add_module(name, convert_model(child))
 
     return mod
+

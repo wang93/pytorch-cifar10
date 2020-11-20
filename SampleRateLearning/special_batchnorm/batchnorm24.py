@@ -1,20 +1,21 @@
 # encoding: utf-8
 # author: Yicheng Wang
 # contact: wyc@whu.edu.cn
-# datetime:2020/10/14 11:44
+# datetime:2020/10/13 14:20
 
 """
 class-wise estimation,
 moving-average,
 biased estimation,
 bias-corrected,
-(corrected) stpds via total running_mean,
-.../(eps + stpd)
+stds via total running_mean,
+momentum decreases progressively,
+.../(eps + std)
 """
 
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):
@@ -31,9 +32,7 @@ class _BatchNorm(origin_BN):
         self.num_classes = num_classes
         self.num_batches_tracked = torch.zeros(num_classes, dtype=torch.long)
         self.register_buffer('running_cls_means', torch.zeros(num_features,  num_classes))
-        self.register_buffer('running_cls_stpds', torch.zeros(num_features, num_classes))
-
-        self.relu = torch.nn.functional.relu
+        self.register_buffer('running_cls_stds', torch.zeros(num_features, num_classes))
 
     def _check_input_dim(self, input):
         raise NotImplementedError
@@ -48,7 +47,7 @@ class _BatchNorm(origin_BN):
         sz = input.size()
         if self.training:
             if input.dim() == 4:
-                reduced_dim = (3, 2, 0)  # do not change the order!
+                reduced_dim = (0, 2, 3)
             elif input.dim() == 2:
                 reduced_dim = (0, )
             else:
@@ -63,36 +62,31 @@ class _BatchNorm(origin_BN):
             if len(indices) != self.num_classes:
                 raise ValueError
 
+            cur_momentum = [1., ] * self.num_classes
             for c, group in enumerate(indices):
                 if len(group) == 0:
                     continue
                 self.num_batches_tracked[c] += 1
                 samples = data[group]
                 mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
-                self.running_cls_means[:, c] = (1 - self.momentum) * self.running_cls_means[:, c] + self.momentum * mean
+                cur_momentum[c] = self.momentum + (1. - self.momentum) ** self.num_batches_tracked[c]
+                self.running_cls_means[:, c] = (1. - cur_momentum[c]) * self.running_cls_means[:, c] + cur_momentum[c] * mean
 
-            correction_factors = (1. - (1. - self.momentum) ** self.num_batches_tracked)
-            self.running_mean = (self.running_cls_means / correction_factors).mean(dim=1, keepdim=False)
+              # (1. - (1. - self.momentum) ** self.num_batches_tracked)
+            self.running_mean = self.running_cls_means.mean(dim=1, keepdim=False)
             data = data - self.expand(self.running_mean, sz)
-            data = self.relu(data, inplace=True)
 
-            stpd = torch.zeros(self.num_features, device=data.device, dtype=data.dtype)
             for c, group in enumerate(indices):
                 if len(group) == 0:
                     continue
                 samples = data[group]
-                for i, channel in enumerate(samples.split(1, dim=1)):
-                    channel = channel[channel.nonzero(as_tuple=True)]
-                    if len(channel) == 0:
-                        stpd[i] = 0.
-                    else:
-                        stpd[i] = channel.square().mean().sqrt()
-                self.running_cls_stpds[:, c] = (1 - self.momentum) * self.running_cls_stpds[:, c] + self.momentum * stpd
+                std = samples.square().mean(dim=reduced_dim, keepdim=False).sqrt()
+                self.running_cls_stds[:, c] = (1. - cur_momentum[c]) * self.running_cls_stds[:, c] + cur_momentum[c] * std
 
-            # Note: the running_var is running_stpd indeed, for convenience of external calling, it has not been renamed.
-            self.running_var = (self.running_cls_stpds / correction_factors).mean(dim=1, keepdim=False)
+            # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
+            self.running_var = self.running_cls_stds.mean(dim=1, keepdim=False)
 
-        # Note: the running_var is running_stpd indeed, for convenience of external calling, it has not been renamed.
+        # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
         y = (input - self.expand(self.running_mean, sz)) \
             / self.expand((self.running_var + self.eps), sz)
 

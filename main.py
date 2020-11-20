@@ -11,7 +11,7 @@ from importlib import import_module
 import random
 from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
-from SampleRateLearning.stable_batchnorm import global_variables
+from SampleRateLearning.special_batchnorm import global_variables
 from copy import deepcopy
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -40,7 +40,7 @@ def main():
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
     parser.add_argument("--sri", action="store_true", help="sample rate inference or not.")
-    parser.add_argument('--stable_bn', default=-1, type=int, help='version of stable bn')
+    parser.add_argument('--special_bn', default=-1, type=int, help='version of stable bn')
     args = parser.parse_args()
 
     if args.srl and args.val_ratio <= 0.:
@@ -74,7 +74,7 @@ class Solver(object):
         self.val_ratio = config.val_ratio
         self.sri = config.sri
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
-        self.stable_bn = config.stable_bn
+        self.special_bn = config.special_bn
         self.config = config
 
         global_variables.classes_num = len(self.classes)
@@ -198,8 +198,8 @@ class Solver(object):
         }
         model = model_factory[self.arc](class_num=len(self.classes))
 
-        if self.stable_bn >= 0:
-            model_path = 'SampleRateLearning.stable_batchnorm.batchnorm{0}'.format(self.stable_bn)
+        if self.special_bn >= 0:
+            model_path = 'SampleRateLearning.stable_batchnorm.batchnorm{0}'.format(self.special_bn)
             sbn = import_module(model_path)
             model = sbn.convert_model(model)
 

@@ -1,27 +1,16 @@
 # encoding: utf-8
 # author: Yicheng Wang
 # contact: wyc@whu.edu.cn
-# datetime:2020/9/29 9:08
+# datetime:2020/11/16 11:28
 
-"""
-std is computed with running mean,
-average stds of all classes,
-.../max(eps, std),
-bias-corrected
-"""
+"""classical BN via sub data"""
+
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from warnings import warn
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):
-    def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True,
-                 track_running_stats=True):
-        super(_BatchNorm, self).__init__(num_features, eps, momentum, affine, track_running_stats)
-        self.running_var = torch.zeros(num_features)
-        self.eps = pow(self.eps, 0.5)
-
     @staticmethod
     def expand(stat, target_size):
         if len(target_size) == 4:
@@ -38,6 +27,14 @@ class _BatchNorm(origin_BN):
 
     def forward(self, input: torch.Tensor):
         self._check_input_dim(input)
+        exponential_average_factor = 0.0
+        if self.training and self.track_running_stats:
+            if self.num_batches_tracked is not None:
+                self.num_batches_tracked += 1
+                if self.momentum is None:  # use cumulative moving average
+                    exponential_average_factor = 1.0 / float(self.num_batches_tracked)
+                else:  # use exponential moving average
+                    exponential_average_factor = self.momentum
 
         sz = input.size()
         if self.training:
@@ -48,44 +45,36 @@ class _BatchNorm(origin_BN):
             else:
                 raise NotImplementedError
 
-            self.num_batches_tracked += 1
-            correction_factor = 1. - (1. - self.momentum) ** self.num_batches_tracked
-
             data = input.detach()
+
             if input.size(0) == batch_labels.batch_size:
                 indices = batch_labels.indices
             else:
-                indices = batch_labels.braid_indices
+                raise NotImplementedError
 
-            means = []
-            for group in indices:
-                if len(group) == 0:
-                    warn('There is no sample of at least one class in current batch, which is incompatible with SRL.')
-                    continue
-                samples = data[group]
-                mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
-                means.append(mean)
+            val_indices = []
+            for ins in indices:
+                val_indices.extend(ins)
 
-            di_mean = sum(means) / len(means)
-            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * di_mean
+            val_data = data[val_indices]
 
-            stds = []
-            data = (data - self.expand(self.running_mean.detach()/correction_factor, sz))
-            for group in indices:
-                samples = data[group]
-                std = samples.square().mean(dim=reduced_dim, keepdim=False).sqrt()
-                stds.append(std)
+            di_mean = torch.mean(val_data, dim=reduced_dim, keepdim=False)
+            di_var = torch.var(val_data, dim=reduced_dim, keepdim=False, unbiased=False)
 
-            di_std = sum(stds) / len(stds)
-            # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
-            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * di_std
+            if self.track_running_stats:
+                self.running_mean = (1 - exponential_average_factor) * self.running_mean + exponential_average_factor * di_mean
+                self.running_var = (1 - exponential_average_factor) * self.running_var + exponential_average_factor * di_var
 
-        correction_factor = 1. - (1. - self.momentum) ** self.num_batches_tracked
+            else:
+                self.running_mean = di_mean
+                self.running_var = di_var
 
-        # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
-        denominator = torch.full_like(self.running_var, self.eps).max(self.running_var / correction_factor)
-        y = (input - self.expand(self.running_mean / correction_factor, sz)) \
-            / self.expand(denominator, sz)
+            y = (input - self.expand(di_mean, sz)) \
+                / self.expand(torch.sqrt(self.eps + di_var), sz)
+
+        else:
+            y = (input - self.expand(self.running_mean, sz)) \
+                / self.expand(torch.sqrt(self.eps + self.running_var), sz)
 
         if self.affine:
             z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)
@@ -133,4 +122,3 @@ def convert_model(module):
         mod.add_module(name, convert_model(child))
 
     return mod
-

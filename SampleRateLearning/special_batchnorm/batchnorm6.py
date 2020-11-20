@@ -4,14 +4,14 @@
 # datetime:2020/9/28 10:08
 
 """
-average vars of all classes,
-.../sqrt(eps + var),
+average stds but not vars of all classes,
+.../(eps + std),
 bias-corrected
 """
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
 from warnings import warn
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):
@@ -19,6 +19,7 @@ class _BatchNorm(origin_BN):
                  track_running_stats=True):
         super(_BatchNorm, self).__init__(num_features, eps, momentum, affine, track_running_stats)
         self.running_var = torch.zeros(num_features)
+        self.eps = pow(self.eps, 0.5)
 
     @staticmethod
     def expand(stat, target_size):
@@ -55,28 +56,30 @@ class _BatchNorm(origin_BN):
                 indices = batch_labels.braid_indices
 
             means = []
-            vars = []
+            stds = []
             for group in indices:
                 if len(group) == 0:
                     warn('There is no sample of at least one class in current batch, which is incompatible with SRL.')
                     continue
                 samples = data[group]
                 mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
-                var = torch.var(samples, dim=reduced_dim, keepdim=False, unbiased=False)
+                std = torch.std(samples, dim=reduced_dim, keepdim=False, unbiased=False)
 
                 means.append(mean)
-                vars.append(var)
+                stds.append(std)
 
             di_mean = sum(means) / len(means)
-            di_var = sum(vars) / len(vars)
+            di_std = sum(stds) / len(stds)
 
             self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * di_mean
-            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * di_var
+            # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
+            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * di_std
 
         correction_factor = 1. - (1. - self.momentum) ** self.num_batches_tracked
 
+        # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
         y = (input - self.expand(self.running_mean/correction_factor, sz)) \
-            / self.expand((self.running_var/correction_factor + self.eps).sqrt(), sz)
+            / self.expand(self.running_var/correction_factor + self.eps, sz)
 
         if self.affine:
             z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)

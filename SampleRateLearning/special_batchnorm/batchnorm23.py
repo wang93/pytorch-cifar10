@@ -1,25 +1,26 @@
 # encoding: utf-8
 # author: Yicheng Wang
 # contact: wyc@whu.edu.cn
-# datetime:2020/10/14 16:17
+# datetime:2020/10/11 17:14
 
 """
-class-wise estimation,
+for bi structure,
+batch-wise estimation,
 moving-average,
 biased estimation,
 bias-corrected,
-half_maximums via total running_mean,
-.../(eps + half_max)
+stds via total running_mean,
+.../(eps + std)
 """
 
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):
     def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True,
-                 track_running_stats=True, num_classes=2):
+                 track_running_stats=True):
         if not track_running_stats:
             raise NotImplementedError
 
@@ -28,12 +29,8 @@ class _BatchNorm(origin_BN):
         self.running_var = torch.zeros(num_features)
         self.eps = pow(self.eps, 0.5)
 
-        self.num_classes = num_classes
-        self.num_batches_tracked = torch.zeros(num_classes, dtype=torch.long)
-        self.register_buffer('running_cls_means', torch.zeros(num_features,  num_classes))
-        self.register_buffer('running_cls_maxes', torch.zeros(num_features, num_classes))
-
-        self.relu = torch.nn.functional.relu
+        self.register_buffer('running_mean_ori', torch.zeros(num_features))
+        self.register_buffer('running_std_ori', torch.zeros(num_features))
 
     def _check_input_dim(self, input):
         raise NotImplementedError
@@ -47,52 +44,35 @@ class _BatchNorm(origin_BN):
 
         sz = input.size()
         if self.training:
+            data = input.detach()
+            self.num_batches_tracked += 1
+
             if input.dim() == 4:
-                reduced_dim = (3, 2, 0) #do not change the order
+                means = data.mean(dim=(0, 2, 3), keepdim=False)
             elif input.dim() == 2:
-                reduced_dim = (0, )
+                means = data.mean(dim=0, keepdim=False)
             else:
                 raise NotImplementedError
 
-            data = input.detach()
-            if input.size(0) == batch_labels.batch_size:
-                indices = batch_labels.indices
-            else:
-                indices = batch_labels.braid_indices
+            correction_factor = (1. - (1. - self.momentum) ** self.num_batches_tracked)
+            self.running_mean_ori = (1 - self.momentum) * self.running_mean_ori + self.momentum * means
+            self.running_mean = self.running_mean_ori / correction_factor
 
-            if len(indices) != self.num_classes:
-                raise ValueError
-
-            for c, group in enumerate(indices):
-                if len(group) == 0:
-                    continue
-                self.num_batches_tracked[c] += 1
-                samples = data[group]
-                mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
-                self.running_cls_means[:, c] = (1 - self.momentum) * self.running_cls_means[:, c] + self.momentum * mean
-
-            correction_factors = (1. - (1. - self.momentum) ** self.num_batches_tracked)
-            self.running_mean = (self.running_cls_means / correction_factors).mean(dim=1, keepdim=False)
             data = data - self.expand(self.running_mean, sz)
-            data = self.relu(data, inplace=True)
 
-            for c, group in enumerate(indices):
-                if len(group) == 0:
-                    continue
-                maxes = data[group]
-                for dim in reduced_dim:
-                    maxes, _ = maxes.max(dim, False)
+            if input.dim() == 4:
+                stds = data.square().mean(dim=(0, 2, 3), keepdim=False).sqrt()
+            elif input.dim() == 2:
+                stds = data.square().mean(dim=0, keepdim=False).sqrt()
 
-                maxes /= 2.
+            self.running_std_ori = (1 - self.momentum) * self.running_std_ori+ self.momentum * stds
 
-                self.running_cls_maxes[:, c] = (1 - self.momentum) * self.running_cls_maxes[:, c] + self.momentum * maxes
+            # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
+            self.running_var = (self.running_std_ori / correction_factor)
 
-            # Note: the running_var is running_max indeed, for convenience of external calling, it has not been renamed.
-            self.running_var, _ = (self.running_cls_maxes / correction_factors).max(dim=1, keepdim=False)
-
-        # Note: the running_var is running_max indeed, for convenience of external calling, it has not been renamed.
+        # Note: the running_var is running_stpd indeed, for convenience of external calling, it has not been renamed.
         y = (input - self.expand(self.running_mean, sz)) \
-            / self.expand(self.running_var + self.eps, sz)
+            / self.expand((self.running_var + self.eps), sz)
 
         if self.affine:
             z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)
@@ -152,4 +132,3 @@ def convert_model(module):
         mod.add_module(name, convert_model(child))
 
     return mod
-

@@ -1,9 +1,15 @@
+# encoding: utf-8
+# author: Yicheng Wang
+# contact: wyc@whu.edu.cn
+# datetime:2020/11/20 10:12
+
+"""classical BN via training set,
+BN with training=False on val set"""
+
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from warnings import warn
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
-'''average means and vars of all classes'''
 
 class _BatchNorm(origin_BN):
     @staticmethod
@@ -33,45 +39,49 @@ class _BatchNorm(origin_BN):
 
         sz = input.size()
         if self.training:
-            means = []
-            vars = []
             if input.dim() == 4:
                 reduced_dim = (0, 2, 3)
             elif input.dim() == 2:
-                reduced_dim = (0, )
+                reduced_dim = (0,)
             else:
                 raise NotImplementedError
 
-            data = input.detach()
+            # data = input.detach()
+
             if input.size(0) == batch_labels.batch_size:
                 indices = batch_labels.indices
             else:
-                indices = batch_labels.braid_indices
+                raise NotImplementedError
 
-            for group in indices:
-                if len(group) == 0:
-                    warn('There is no sample of at least one class in current batch, which is incompatible with SRL.')
-                    continue
-                samples = data[group]
-                mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
-                var = torch.var(samples, dim=reduced_dim, keepdim=False, unbiased=False)
+            train_indices = []
+            for ins in indices:
+                train_indices.extend(ins)
 
-                means.append(mean)
-                vars.append(var)
+            val_indices = list(set(range(batch_labels.batch_size)) - set(train_indices))
 
-            di_mean = sum(means) / len(means)
-            di_var = sum(vars) / len(vars)
+            train_data = input[train_indices]
+            val_data = input[val_indices]
+
+            cur_mean = torch.mean(train_data, dim=reduced_dim, keepdim=False).detach()
+            cur_var = torch.var(train_data, dim=reduced_dim, keepdim=False, unbiased=False).detach()
 
             if self.track_running_stats:
-                self.running_mean = (1 - exponential_average_factor) * self.running_mean + exponential_average_factor * di_mean
-                self.running_var = (1 - exponential_average_factor) * self.running_var + exponential_average_factor * di_var
+                self.running_mean = (
+                                            1 - exponential_average_factor) * self.running_mean + exponential_average_factor * cur_mean
+                self.running_var = (
+                                           1 - exponential_average_factor) * self.running_var + exponential_average_factor * cur_var
 
             else:
-                self.running_mean = di_mean
-                self.running_var = di_var
+                self.running_mean = cur_mean
+                self.running_var = cur_var
 
-            y = (input - self.expand(di_mean, sz)) \
-                / self.expand(torch.sqrt(self.eps + di_var), sz)
+            train_y = (train_data - self.expand(cur_mean, sz)) \
+                      / self.expand(torch.sqrt(self.eps + cur_var), sz)
+
+            val_y = (val_data - self.expand(self.running_mean, sz)) \
+                    / self.expand(torch.sqrt(self.eps + self.running_var), sz)
+
+            y = torch.cat((train_y, val_y), dim=0)
 
         else:
             y = (input - self.expand(self.running_mean, sz)) \

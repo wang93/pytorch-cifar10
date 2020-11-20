@@ -1,21 +1,20 @@
 # encoding: utf-8
 # author: Yicheng Wang
 # contact: wyc@whu.edu.cn
-# datetime:2020/11/16 10:08
+# datetime:2020/10/14 15:12
 
 """
 class-wise estimation,
 moving-average,
 biased estimation,
 bias-corrected,
-stds via total running_mean,
-.../(eps + std)
-current mean and std when training
+maximums via total running_mean,
+.../(eps + max)
 """
 
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):
@@ -32,7 +31,9 @@ class _BatchNorm(origin_BN):
         self.num_classes = num_classes
         self.num_batches_tracked = torch.zeros(num_classes, dtype=torch.long)
         self.register_buffer('running_cls_means', torch.zeros(num_features,  num_classes))
-        self.register_buffer('running_cls_stds', torch.zeros(num_features, num_classes))
+        self.register_buffer('running_cls_maxes', torch.zeros(num_features, num_classes))
+
+        self.relu = torch.nn.functional.relu
 
     def _check_input_dim(self, input):
         raise NotImplementedError
@@ -47,7 +48,7 @@ class _BatchNorm(origin_BN):
         sz = input.size()
         if self.training:
             if input.dim() == 4:
-                reduced_dim = (0, 2, 3)
+                reduced_dim = (3, 2, 0) #do not change the order
             elif input.dim() == 2:
                 reduced_dim = (0, )
             else:
@@ -62,48 +63,34 @@ class _BatchNorm(origin_BN):
             if len(indices) != self.num_classes:
                 raise ValueError
 
-            cls_means = []
             for c, group in enumerate(indices):
                 if len(group) == 0:
                     continue
                 self.num_batches_tracked[c] += 1
                 samples = data[group]
                 mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
-                cls_means.append(mean)
                 self.running_cls_means[:, c] = (1 - self.momentum) * self.running_cls_means[:, c] + self.momentum * mean
 
             correction_factors = (1. - (1. - self.momentum) ** self.num_batches_tracked)
             self.running_mean = (self.running_cls_means / correction_factors).mean(dim=1, keepdim=False)
-            current_mean = sum(cls_means) / float(len(cls_means))
-            current_data = data - self.expand(current_mean, sz)
             data = data - self.expand(self.running_mean, sz)
+            data = self.relu(data, inplace=True)
 
             for c, group in enumerate(indices):
                 if len(group) == 0:
                     continue
-                samples = data[group]
-                std = samples.square().mean(dim=reduced_dim, keepdim=False).sqrt()
-                self.running_cls_stds[:, c] = (1 - self.momentum) * self.running_cls_stds[:, c] + self.momentum * std
+                maxes = data[group]
+                for dim in reduced_dim:
+                    maxes, _ = maxes.max(dim, False)
 
-            # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
-            self.running_var = (self.running_cls_stds / correction_factors).mean(dim=1, keepdim=False)
+                self.running_cls_maxes[:, c] = (1 - self.momentum) * self.running_cls_maxes[:, c] + self.momentum * maxes
 
-            current_stds = []
-            for c, group in enumerate(indices):
-                if len(group) == 0:
-                    continue
-                samples = current_data[group]
-                std = samples.square().mean(dim=reduced_dim, keepdim=False).sqrt()
-                current_stds.append(std)
-            current_std = sum(current_stds) / float(len(current_stds))
+            # Note: the running_var is running_max indeed, for convenience of external calling, it has not been renamed.
+            self.running_var, _ = (self.running_cls_maxes / correction_factors).max(dim=1, keepdim=False)
 
-            y = (input - self.expand(current_mean, sz)) \
-                / self.expand((current_std + self.eps), sz)
-
-        else:
-            # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
-            y = (input - self.expand(self.running_mean, sz)) \
-                / self.expand((self.running_var + self.eps), sz)
+        # Note: the running_var is running_max indeed, for convenience of external calling, it has not been renamed.
+        y = (input - self.expand(self.running_mean, sz)) \
+            / self.expand(self.running_var + self.eps, sz)
 
         if self.affine:
             z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)

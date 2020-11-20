@@ -1,22 +1,20 @@
 # encoding: utf-8
 # author: Yicheng Wang
 # contact: wyc@whu.edu.cn
-# datetime:2020/10/10 10:32
+# datetime:2020/10/14 11:44
 
 """
 class-wise estimation,
 moving-average,
 biased estimation,
 bias-corrected,
-stpds via total running_mean,
-.../(eps + stpd),
-no bias
+(corrected) stpds via total running_mean,
+.../(eps + stpd)
 """
 
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from warnings import warn
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):
@@ -50,7 +48,7 @@ class _BatchNorm(origin_BN):
         sz = input.size()
         if self.training:
             if input.dim() == 4:
-                reduced_dim = (0, 2, 3)
+                reduced_dim = (3, 2, 0)  # do not change the order!
             elif input.dim() == 2:
                 reduced_dim = (0, )
             else:
@@ -78,11 +76,17 @@ class _BatchNorm(origin_BN):
             data = data - self.expand(self.running_mean, sz)
             data = self.relu(data, inplace=True)
 
+            stpd = torch.zeros(self.num_features, device=data.device, dtype=data.dtype)
             for c, group in enumerate(indices):
                 if len(group) == 0:
                     continue
                 samples = data[group]
-                stpd = samples.square().mean(dim=reduced_dim, keepdim=False).sqrt()
+                for i, channel in enumerate(samples.split(1, dim=1)):
+                    channel = channel[channel.nonzero(as_tuple=True)]
+                    if len(channel) == 0:
+                        stpd[i] = 0.
+                    else:
+                        stpd[i] = channel.square().mean().sqrt()
                 self.running_cls_stpds[:, c] = (1 - self.momentum) * self.running_cls_stpds[:, c] + self.momentum * stpd
 
             # Note: the running_var is running_stpd indeed, for convenience of external calling, it has not been renamed.
@@ -93,7 +97,7 @@ class _BatchNorm(origin_BN):
             / self.expand((self.running_var + self.eps), sz)
 
         if self.affine:
-            z = y * self.expand(self.weight, sz)  # + self.expand(self.bias, sz)
+            z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)
         else:
             z = y
 

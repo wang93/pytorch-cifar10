@@ -1,20 +1,21 @@
 # encoding: utf-8
 # author: Yicheng Wang
 # contact: wyc@whu.edu.cn
-# datetime:2020/10/1 8:32
+# datetime:2020/10/10 18:38
 
 """
-class-wise estimation,
+for extractor (bi structure)
 moving-average,
 biased estimation,
 bias-corrected,
-vars via total running_mean,
-.../sqrt(eps + var)
+stpds via total running_mean,
+.../(eps + stpd)
 """
 
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from warnings import warn
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):
@@ -25,13 +26,18 @@ class _BatchNorm(origin_BN):
 
         super(_BatchNorm, self).__init__(num_features, eps, momentum, affine, track_running_stats)
 
+        self.register_buffer('running_mean_ori', torch.zeros(num_features))
+        self.register_buffer('running_var_ori', torch.zeros(num_features))
+
         self.running_var = torch.zeros(num_features)
         self.eps = pow(self.eps, 0.5)
 
-        self.num_classes = num_classes
-        self.num_batches_tracked = torch.zeros(num_classes, dtype=torch.long)
-        self.register_buffer('running_cls_means', torch.zeros(num_features,  num_classes))
-        self.register_buffer('running_cls_vars', torch.zeros(num_features, num_classes))
+        # self.num_classes = num_classes
+        # self.num_batches_tracked = torch.zeros(num_classes, dtype=torch.long)
+        # self.register_buffer('running_cls_means', torch.zeros(num_features,  num_classes))
+        # self.register_buffer('running_cls_stpds', torch.zeros(num_features, num_classes))
+
+        self.relu = torch.nn.functional.relu
 
     def _check_input_dim(self, input):
         raise NotImplementedError
@@ -52,40 +58,32 @@ class _BatchNorm(origin_BN):
             else:
                 raise NotImplementedError
 
-            data = input.detach()
-            if input.size(0) == batch_labels.batch_size:
-                indices = batch_labels.indices
-            else:
-                indices = batch_labels.braid_indices
+            self.num_batches_tracked += 1
 
-            if len(indices) != self.num_classes:
-                raise ValueError
+            samples = input.detach()
+            mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
 
-            for c, group in enumerate(indices):
-                if len(group) == 0:
-                    continue
-                self.num_batches_tracked[c] += 1
-                samples = data[group]
-                mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
-                self.running_cls_means[:, c] = (1 - self.momentum) * self.running_cls_means[:, c] + self.momentum * mean
+            # for c, group in enumerate(indices):
+            #     if len(group) == 0:
+            #         continue
+            #     self.num_batches_tracked[c] += 1
+            #     samples = data[group]
+            #     mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
+            correction_factor = 1. - (1. - self.momentum) ** self.num_batches_tracked
+            self.running_mean_ori = (1 - self.momentum) * self.running_mean_ori + self.momentum * mean
+            self.running_mean = self.running_mean_ori / correction_factor
+            samples = samples - self.expand(self.running_mean, sz)
+            samples = self.relu(samples, inplace=True)
 
-            correction_factors = (1. - (1. - self.momentum) ** self.num_batches_tracked)
-            self.running_mean = (self.running_cls_means / correction_factors).mean(dim=1, keepdim=False)
-            data = data - self.expand(self.running_mean, sz)
+            stpd = samples.square().mean(dim=reduced_dim, keepdim=False).sqrt()
+            self.running_var_ori = (1 - self.momentum) * self.running_var_ori + self.momentum * stpd
 
-            for c, group in enumerate(indices):
-                if len(group) == 0:
-                    continue
-                samples = data[group]
-                var = samples.square().mean(dim=reduced_dim, keepdim=False)
-                self.running_cls_vars[:, c] = (1 - self.momentum) * self.running_cls_vars[:, c] + self.momentum * var
+            # Note: the running_var is running_stpd indeed, for convenience of external calling, it has not been renamed.
+            self.running_var = self.running_var_ori / correction_factor
 
-            # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
-            self.running_var = (self.running_cls_vars / correction_factors).mean(dim=1, keepdim=False)
-
-        # Note: the running_var is running_std indeed, for convenience of external calling, it has not been renamed.
+        # Note: the running_var is running_stpd indeed, for convenience of external calling, it has not been renamed.
         y = (input - self.expand(self.running_mean, sz)) \
-            / self.expand((self.running_var + self.eps).sqrt(), sz)
+            / self.expand((self.running_var + self.eps), sz)
 
         if self.affine:
             z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)

@@ -1,39 +1,45 @@
 # encoding: utf-8
 # author: Yicheng Wang
 # contact: wyc@whu.edu.cn
-# datetime:2020/9/29 9:32
+# datetime:2020/10/1 8:38
 
 """
-MAE is computed with running mean,
-average MAEs of all classes,
-.../max(eps, MAE),
-bias-corrected
+class-wise estimation,
+moving-average,
+biased estimation,
+bias-corrected,
+pvars via total running_mean,
+.../sqrt(eps + pvar)
 """
+
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from warnings import warn
-from SampleRateLearning.stable_batchnorm import global_variables as batch_labels
+from SampleRateLearning.special_batchnorm import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):
     def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True,
-                 track_running_stats=True):
+                 track_running_stats=True, num_classes=2):
+        if not track_running_stats:
+            raise NotImplementedError
+
         super(_BatchNorm, self).__init__(num_features, eps, momentum, affine, track_running_stats)
+
         self.running_var = torch.zeros(num_features)
         self.eps = pow(self.eps, 0.5)
 
-    @staticmethod
-    def expand(stat, target_size):
-        if len(target_size) == 4:
-            stat = stat.unsqueeze(1).unsqueeze(2).expand(target_size[1:])
-        elif len(target_size) == 2:
-            pass
-        else:
-            raise NotImplementedError
+        self.num_classes = num_classes
+        self.num_batches_tracked = torch.zeros(num_classes, dtype=torch.long)
+        self.register_buffer('running_cls_means', torch.zeros(num_features,  num_classes))
+        self.register_buffer('running_cls_pvars', torch.zeros(num_features, num_classes))
 
-        return stat
+        self.relu = torch.nn.functional.relu
 
     def _check_input_dim(self, input):
+        raise NotImplementedError
+
+    @staticmethod
+    def expand(stat, target_size):
         raise NotImplementedError
 
     def forward(self, input: torch.Tensor):
@@ -48,44 +54,41 @@ class _BatchNorm(origin_BN):
             else:
                 raise NotImplementedError
 
-            self.num_batches_tracked += 1
-            correction_factor = 1. - (1. - self.momentum) ** self.num_batches_tracked
-
             data = input.detach()
             if input.size(0) == batch_labels.batch_size:
                 indices = batch_labels.indices
             else:
                 indices = batch_labels.braid_indices
 
-            means = []
-            for group in indices:
+            if len(indices) != self.num_classes:
+                raise ValueError
+
+            for c, group in enumerate(indices):
                 if len(group) == 0:
-                    warn('There is no sample of at least one class in current batch, which is incompatible with SRL.')
                     continue
+                self.num_batches_tracked[c] += 1
                 samples = data[group]
                 mean = torch.mean(samples, dim=reduced_dim, keepdim=False)
-                means.append(mean)
+                self.running_cls_means[:, c] = (1 - self.momentum) * self.running_cls_means[:, c] + self.momentum * mean
 
-            di_mean = sum(means) / len(means)
-            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * di_mean
+            correction_factors = (1. - (1. - self.momentum) ** self.num_batches_tracked)
+            self.running_mean = (self.running_cls_means / correction_factors).mean(dim=1, keepdim=False)
+            data = data - self.expand(self.running_mean, sz)
+            data = self.relu(data, inplace=True)
 
-            MAEs = []
-            data = (data - self.expand(self.running_mean.detach()/correction_factor, sz))
-            for group in indices:
+            for c, group in enumerate(indices):
+                if len(group) == 0:
+                    continue
                 samples = data[group]
-                MAE = samples.abs().mean(dim=reduced_dim, keepdim=False)
-                MAEs.append(MAE)
+                pvar = samples.square().mean(dim=reduced_dim, keepdim=False)
+                self.running_cls_pvars[:, c] = (1 - self.momentum) * self.running_cls_pvars[:, c] + self.momentum * pvar
 
-            di_MAE = sum(MAEs) / len(MAEs)
-            # Note: the running_var is running_MAE indeed, for convenience of external calling, it has not been renamed.
-            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * di_MAE
+            # Note: the running_var is running_pvar indeed, for convenience of external calling, it has not been renamed.
+            self.running_var = (self.running_cls_pvars / correction_factors).mean(dim=1, keepdim=False)
 
-        correction_factor = 1. - (1. - self.momentum) ** self.num_batches_tracked
-
-        # Note: the running_var is running_MAE indeed, for convenience of external calling, it has not been renamed.
-        denominator = torch.full_like(self.running_var, self.eps).max(self.running_var / correction_factor)
-        y = (input - self.expand(self.running_mean / correction_factor, sz)) \
-            / self.expand(denominator, sz)
+        # Note: the running_var is running_pvar indeed, for convenience of external calling, it has not been renamed.
+        y = (input - self.expand(self.running_mean, sz)) \
+            / self.expand((self.running_var + self.eps).sqrt(), sz)
 
         if self.affine:
             z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)
@@ -97,9 +100,16 @@ class _BatchNorm(origin_BN):
 
 class BatchNorm1d(_BatchNorm):
     def _check_input_dim(self, input):
-        if input.dim() != 2 and input.dim() != 3:
-            raise ValueError('expected 2D or 3D input (got {}D input)'
+        if input.dim() != 2:
+            raise ValueError('expected 2D input (got {}D input)'
                              .format(input.dim()))
+        # if input.dim() != 2 and input.dim() != 3:
+        #     raise ValueError('expected 2D or 3D input (got {}D input)'
+        #                      .format(input.dim()))
+
+    @staticmethod
+    def expand(stat, *args, **kwargs):
+        return stat
 
 
 class BatchNorm2d(_BatchNorm):
@@ -107,6 +117,11 @@ class BatchNorm2d(_BatchNorm):
         if input.dim() != 4:
             raise ValueError('expected 4D input (got {}D input)'
                              .format(input.dim()))
+
+    @staticmethod
+    def expand(stat, target_size):
+        stat = stat.unsqueeze(1).unsqueeze(2).expand(target_size[1:])
+        return stat
 
 
 def convert_model(module):
