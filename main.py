@@ -199,7 +199,7 @@ class Solver(object):
         model = model_factory[self.arc](class_num=len(self.classes))
 
         if self.special_bn >= 0:
-            model_path = 'SampleRateLearning.stable_batchnorm.batchnorm{0}'.format(self.special_bn)
+            model_path = 'SampleRateLearning.special_batchnorm.batchnorm{0}'.format(self.special_bn)
             sbn = import_module(model_path)
             model = sbn.convert_model(model)
 
