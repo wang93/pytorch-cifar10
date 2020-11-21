@@ -38,7 +38,7 @@ class SummaryWriters(object):
         for writer, precision in zip(self.class_summary_writers, precisions):
             writer.add_scalar('precision', normal_scalar(precision), global_step)
 
-    def record_iter(self, loss, global_step, pos_rate=None, optimizer=None, criterion=None):
+    def record_iter(self, loss, global_step, optimizer=None, criterion=None):
         if loss is not None:
             self.summary_writer.add_scalar('loss', normal_scalar(loss), global_step)
 
@@ -47,12 +47,12 @@ class SummaryWriters(object):
                 for writer, t_loss in zip(self.class_summary_writers, criterion.train_losses):
                     writer.add_scalar('train_losses', normal_scalar(t_loss), global_step)
 
+                pos_rate = criterion.pos_rate
+                self.summary_writer.add_scalar('pos_rate', normal_scalar(pos_rate), global_step)
+
         if criterion.val_losses is not None:
             for writer, v_loss in zip(self.class_summary_writers, criterion.val_losses):
                 writer.add_scalar('val_losses', normal_scalar(v_loss), global_step)
-
-        if pos_rate is not None:
-            self.summary_writer.add_scalar('pos_rate', normal_scalar(pos_rate), global_step)
 
         if optimizer is not None:
             cur_lr = optimizer.param_groups[0]['lr']

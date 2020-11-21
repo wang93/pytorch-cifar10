@@ -239,12 +239,7 @@ class Solver(object):
             self.optimizer.step()
 
             global_step += 1
-            if self.srl:
-                pos_rate = self.criterion.pos_rate
-            else:
-                pos_rate = None
             self.recorder.record_iter(loss, global_step,
-                                      pos_rate=pos_rate,
                                       optimizer=self.optimizer,
                                       criterion=self.criterion)
 
@@ -254,9 +249,6 @@ class Solver(object):
 
             # train_correct incremented by one if predicted right
             train_correct += np.sum(prediction[1].cpu().numpy() == target.cpu().numpy())
-
-            # progress_bar(batch_num, len(self.train_loader), 'Loss: %.4f | Acc: %.3f%% (%d/%d)'
-            #              % (train_loss / (batch_num + 1), 100. * train_correct / total, train_correct, total))
 
         print('training loss: {:.5f}'.format(train_loss / (batch_num + 1)))
         if self.srl:
@@ -285,9 +277,6 @@ class Solver(object):
                 _, prediction = torch.max(output, 1)
                 total += target.size(0)
                 test_correct += np.sum(prediction.cpu().numpy() == target.cpu().numpy())
-
-                # progress_bar(batch_num, len(self.test_loader), 'Loss: %.4f | Acc: %.3f%% (%d/%d)'
-                #              % (test_loss / (batch_num + 1), 100. * test_correct / total, test_correct, total))
 
                 y_pred = prediction.view(-1).cpu().numpy().tolist()
                 y_true = target.view(-1).cpu().numpy().tolist()
@@ -335,7 +324,6 @@ class Solver(object):
             if self.srl and self.srl_lr < 0:
                 cur_lr = self.optimizer.param_groups[0]['lr']
                 self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
-                #     self.summary_writer.add_scalar('lr', cur_lr, global_step)
             print("\n===> epoch: %d/200" % epoch)
             self.train(epoch)
             test_result = self.test(epoch)

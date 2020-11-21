@@ -66,10 +66,8 @@ class _BatchNorm(origin_BN):
             cur_var = torch.var(train_data, dim=reduced_dim, keepdim=False, unbiased=False).detach()
 
             if self.track_running_stats:
-                self.running_mean = (
-                                            1 - exponential_average_factor) * self.running_mean + exponential_average_factor * cur_mean
-                self.running_var = (
-                                           1 - exponential_average_factor) * self.running_var + exponential_average_factor * cur_var
+                self.running_mean = (1 - exponential_average_factor) * self.running_mean + exponential_average_factor * cur_mean
+                self.running_var = (1 - exponential_average_factor) * self.running_var + exponential_average_factor * cur_var
 
             else:
                 self.running_mean = cur_mean
