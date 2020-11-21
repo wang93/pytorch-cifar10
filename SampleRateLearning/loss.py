@@ -4,62 +4,6 @@ from torch.optim import SGD, Adam, AdamW
 from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 
-class SRI_BCELoss(nn.Module):
-    def __init__(self, sampler: SampleRateSampler, norm=False):
-        if not isinstance(sampler, SampleRateBatchSampler):
-            raise TypeError
-
-        super(SRI_BCELoss, self).__init__()
-
-        self.pos_rate = 0.5
-        self.sampler = sampler
-        self.sampler.update(self.pos_rate)
-        self.norm = norm
-        self.recent_losses = None
-
-    def forward(self, scores, labels: torch.Tensor):
-        losses, is_pos = self.get_losses(scores, labels)
-        pos_loss = losses[is_pos].mean()
-        neg_loss = losses[~is_pos].mean()
-
-        self.recent_losses = [pos_loss, neg_loss]
-
-        if self.norm:
-            if torch.isnan(pos_loss):
-                print('pos_loss is nan!')
-                loss = neg_loss * 0.
-            elif torch.isnan(neg_loss):
-                print('neg_loss is nan!')
-                loss = pos_loss * 0.
-            else:
-                pos_num = is_pos.sum()
-                batch_size = scores.size(0)
-                real_pos_rate = pos_num / float(batch_size)
-                scale_correction_factor = torch.sqrt(real_pos_rate * (1. - real_pos_rate))
-                loss = (pos_loss + neg_loss) * scale_correction_factor
-
-        else:
-            loss = losses.mean()
-
-        # inference pos_rate
-        self.pos_rate = (pos_loss / (neg_loss + pos_loss + 0.000001)).cpu().item()
-
-        return loss
-
-    def get_losses(self, scores, labels: torch.Tensor):
-        losses = nn.BCELoss(reduction='none')(scores.sigmoid(), labels)
-        is_pos = labels.type(torch.bool)
-        return losses, is_pos
-
-
-class SRI_CELoss(SRI_BCELoss):
-    def get_losses(self, scores, labels: torch.Tensor):
-        labels = labels.to(dtype=torch.long).view(-1)
-        losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
-        is_pos = labels.type(torch.bool)
-        return losses, is_pos
-
-
 class SRL_BCELoss(nn.Module):
     def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0., norm=False, pos_rate=None, in_train=True):
         if not isinstance(sampler, SampleRateBatchSampler):

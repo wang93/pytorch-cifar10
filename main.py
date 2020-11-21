@@ -39,7 +39,6 @@ def main():
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
-    parser.add_argument("--sri", action="store_true", help="sample rate inference or not.")
     parser.add_argument('--special_bn', default=-1, type=int, help='version of stable bn')
     args = parser.parse_args()
 
@@ -72,7 +71,6 @@ class Solver(object):
         self.srl = config.srl
         self.srl_lr = config.srl_lr
         self.val_ratio = config.val_ratio
-        self.sri = config.sri
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
         self.special_bn = config.special_bn
         self.config = config
@@ -145,23 +143,20 @@ class Solver(object):
             batch_sampler = ValidationBatchSampler(data_source=val_set, batch_size=self.val_batch_size)
             self.val_loader = iter(torch.utils.data.DataLoader(dataset=val_set, batch_sampler=batch_sampler))
 
-        if self.srl or self.sri:
+        if self.srl:
             from SampleRateLearning.sampler import SampleRateBatchSampler
+            from SampleRateLearning.loss import SRL_CELoss
+
             batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.train_batch_size)
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_sampler=batch_sampler)
 
-            if self.srl:
-                from SampleRateLearning.loss import SRL_CELoss
-                self.criterion = SRL_CELoss(sampler=batch_sampler,
-                                            optim=self.config.srl_optim,
-                                            lr=max(self.srl_lr, 0),
-                                            pos_rate=self.config.pos_rate,
-                                            in_train=self.config.srl_in_train,
-                                            norm=self.config.srl_norm
-                                            ).cuda()
-            else:
-                from SampleRateLearning.loss import SRI_CELoss
-                self.criterion = SRI_CELoss(sampler=batch_sampler).cuda()
+            self.criterion = SRL_CELoss(sampler=batch_sampler,
+                                        optim=self.config.srl_optim,
+                                        lr=max(self.srl_lr, 0),
+                                        pos_rate=self.config.pos_rate,
+                                        in_train=self.config.srl_in_train,
+                                        norm=self.config.srl_norm
+                                        ).cuda()
 
         else:
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size,
@@ -244,7 +239,7 @@ class Solver(object):
             self.optimizer.step()
 
             global_step += 1
-            if self.srl or self.sri:
+            if self.srl:
                 pos_rate = self.criterion.pos_rate
             else:
                 pos_rate = None
@@ -264,7 +259,7 @@ class Solver(object):
             #              % (train_loss / (batch_num + 1), 100. * train_correct / total, train_correct, total))
 
         print('training loss: {:.5f}'.format(train_loss / (batch_num + 1)))
-        if self.srl or self.sri:
+        if self.srl:
             print('pos rate: {:.4f}'.format(self.criterion.pos_rate))
 
         return train_loss, train_correct / total
