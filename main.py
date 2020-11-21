@@ -32,6 +32,7 @@ def main():
     parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
+    parser.add_argument("--srl_alternate", action="store_true", help="sample rate learning in alternate mode or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
     parser.add_argument('--srl_norm', action="store_true", help="use normed srl")
@@ -44,6 +45,9 @@ def main():
 
     if args.srl and args.val_ratio <= 0.:
         args.srl_in_train = True
+
+    if not args.srl:
+        args.srl_alternate = False
 
     prepare_running(args)
     solver = Solver(args)
@@ -256,8 +260,10 @@ class Solver(object):
 
         return train_loss, train_correct / total
 
+    def train2(self, epoch):
+        raise NotImplementedError
+
     def test(self, epoch):
-        # print("test:")
         self.model.eval()
         if isinstance(self.criterion, nn.Module):
             self.criterion.eval()
@@ -285,9 +291,6 @@ class Solver(object):
         accuracy = test_correct / total
 
         print('test accuracy: {:.2f}%'.format(100. * accuracy))
-
-        # print('confusion matrix:')
-        # pprint(cm)
 
         sample_nums = cm.sum(axis=1)
         hitted_nums = cm.diagonal()
@@ -325,7 +328,10 @@ class Solver(object):
                 cur_lr = self.optimizer.param_groups[0]['lr']
                 self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
             print("\n===> epoch: %d/200" % epoch)
-            self.train(epoch)
+            if self.config.srl_alternate:
+                self.train2(epoch)
+            else:
+                self.train(epoch)
             test_result = self.test(epoch)
             accuracy = max(accuracy, test_result[1])
             worst_precision = max(worst_precision, test_result[2])

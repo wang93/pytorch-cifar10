@@ -5,7 +5,7 @@ from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 
 class SRL_BCELoss(nn.Module):
-    def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0., norm=False, pos_rate=None, in_train=True):
+    def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0., norm=False, pos_rate=None, in_train=True, alternate=False):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
@@ -21,6 +21,8 @@ class SRL_BCELoss(nn.Module):
         self.sampler.update(self.pos_rate)
         self.norm = norm
         self.in_train = in_train
+
+        self.alternate = alternate
 
         param_groups = [{'params': [self.alpha]}]
         if optim == "sgd":
@@ -66,7 +68,32 @@ class SRL_BCELoss(nn.Module):
         self.train_losses = None
         self.val_losses = None
 
+    def forward2(self, scores, labels: torch.Tensor):
+
+        losses, is_pos = self.get_losses(scores, labels)
+
+        pos_loss = losses[is_pos].mean()
+        neg_loss = losses[~is_pos].mean()
+        self.val_losses = [neg_loss, pos_loss]
+
+        loss = losses.mean()
+
+        # update pos_rate
+        if self.training:
+            grad = (neg_loss - pos_loss).detach()
+            if (not torch.isnan(grad)) and isinstance(self.pos_rate, torch.Tensor):
+                self.optimizer.zero_grad()
+                self.pos_rate.backward(grad)
+                self.optimizer.step()
+                self.pos_rate = self.alpha.sigmoid()
+                self.sampler.update(self.pos_rate)
+
+        return loss
+
     def forward(self, scores, labels: torch.Tensor):
+        if self.alternate:
+            return self.forward2(scores, labels)
+
         losses, is_pos = self.get_losses(scores, labels)
         if is_pos.size(0) > self.sampler.batch_size:
             if not self.in_train:
