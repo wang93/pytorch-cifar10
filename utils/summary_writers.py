@@ -10,7 +10,7 @@ SummaryWriters
 from tensorboardX import SummaryWriter
 import torch
 from os.path import join as pjoin
-from SampleRateLearning.loss import SRL_BCELoss, SRI_BCELoss
+from SampleRateLearning.loss import SRL_BCELoss
 
 
 def normal_scalar(v):
@@ -42,7 +42,7 @@ class SummaryWriters(object):
         if loss is not None:
             self.summary_writer.add_scalar('loss', normal_scalar(loss), global_step)
 
-        if isinstance(criterion, (SRI_BCELoss, SRL_BCELoss)):
+        if isinstance(criterion, SRL_BCELoss):
             if criterion.train_losses is not None:
                 for writer, t_loss in zip(self.class_summary_writers, criterion.train_losses):
                     writer.add_scalar('train_losses', normal_scalar(t_loss), global_step)
