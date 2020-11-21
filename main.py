@@ -293,7 +293,8 @@ class Solver(object):
             self.criterion.train()
             val_data, val_target = self.val_loader.next()
             val_data, val_target = val_data.cuda(), val_target.cuda()
-            val_output = self.model(val_data)
+            with torch.no_grad():
+                val_output = self.model(val_data)
             self.criterion(val_output, val_target)
 
             global_step += 1
