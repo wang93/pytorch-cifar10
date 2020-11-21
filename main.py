@@ -159,7 +159,8 @@ class Solver(object):
                                         lr=max(self.srl_lr, 0),
                                         pos_rate=self.config.pos_rate,
                                         in_train=self.config.srl_in_train,
-                                        norm=self.config.srl_norm
+                                        norm=self.config.srl_norm,
+                                        alternate=self.config.srl_alternate
                                         ).cuda()
 
         else:
@@ -261,7 +262,49 @@ class Solver(object):
         return train_loss, train_correct / total
 
     def train2(self, epoch):
-        raise NotImplementedError
+        train_loss = 0
+        train_correct = 0
+        total = 0
+
+        iter_num_per_epoch = len(self.train_loader)
+        global_step = (epoch - 1) * iter_num_per_epoch
+
+        for batch_num, (data, target) in enumerate(self.train_loader):
+            data, target = data.cuda(), target.cuda()
+            global_variables.parse_target(target)
+
+            self.model.train()
+            self.criterion.eval()
+            self.optimizer.zero_grad()
+            output = self.model(data)
+            loss = self.criterion(output, target)
+            loss.backward()
+            self.optimizer.step()
+
+            train_loss += loss.item()
+            prediction = torch.max(output, 1)  # second param "1" represents the dimension to be reduced
+            total += target.size(0)
+
+            train_correct += np.sum(prediction[1].cpu().numpy()
+                                    == target.cpu().numpy())  # train_correct incremented by one if predicted right
+
+            # srl
+            self.model.eval()
+            self.criterion.train()
+            val_data, val_target = self.val_loader.next()
+            val_output = self.model(val_data)
+            self.criterion(val_output, val_target)
+
+            global_step += 1
+            self.recorder.record_iter(loss, global_step,
+                                      optimizer=self.optimizer,
+                                      criterion=self.criterion)
+
+        print('training loss: {:.5f}'.format(train_loss / (batch_num + 1)))
+        if self.srl:
+            print('pos rate: {:.4f}'.format(self.criterion.pos_rate))
+
+        return train_loss, train_correct / total
 
     def test(self, epoch):
         self.model.eval()
