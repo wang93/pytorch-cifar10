@@ -124,7 +124,7 @@ class SRL_BCELoss(nn.Module):
             train_neg_loss = neg_loss = losses[~is_pos].mean()
             train_losses = losses
             self.train_losses = [neg_loss, pos_loss]
-            self.val_losses = None
+            # self.val_losses = None
 
         if self.norm:
             loss = (train_neg_loss + train_pos_loss) / 2.
