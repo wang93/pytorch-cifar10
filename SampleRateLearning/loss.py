@@ -32,21 +32,21 @@ class SRL_BCELoss(nn.Module):
         elif optim == 'adam':
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = Adam(param_groups, **default,
-                             betas=(0.9, 0.999),
+                             betas=(0., 0.999),
                              eps=1e-8,
                              amsgrad=False)
 
         elif optim == 'amsgrad':
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = Adam(param_groups, **default,
-                             betas=(0.9, 0.999),
+                             betas=(0., 0.999),
                              eps=1e-8,
                              amsgrad=True)
 
         elif optim == 'adamw':
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = AdamW(param_groups, **default,
-                              betas=(0.9, 0.999),
+                              betas=(0., 0.999),
                               eps=1e-8,
                               amsgrad=False)
 
@@ -54,7 +54,7 @@ class SRL_BCELoss(nn.Module):
             from utils.optimizers import AdamMW
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = AdamMW(param_groups, **default,
-                               betas=(0.9, 0.999),
+                               betas=(0., 0.999),
                                eps=1e-8,
                                amsgrad=False)
         else:
