@@ -12,7 +12,7 @@ class SRL_BCELoss(nn.Module):
         super(SRL_BCELoss, self).__init__()
         self.sampler = sampler
 
-        self.alpha = nn.Parameter(torch.tensor(2.3026).cuda())
+        self.alpha = nn.Parameter(torch.tensor(0.4055).cuda())
         if pos_rate is None:
             self.pos_rate = self.alpha.sigmoid()
         else:
