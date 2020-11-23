@@ -68,6 +68,8 @@ class SRL_BCELoss(nn.Module):
         self.train_losses = None
         self.val_losses = None
 
+        self.initial = True
+
     def forward2(self, scores, labels: torch.Tensor):
 
         losses, is_pos = self.get_losses(scores, labels)
@@ -79,11 +81,19 @@ class SRL_BCELoss(nn.Module):
         loss = losses.mean()
 
         # update pos_rate
-        grad = (neg_loss - pos_loss).detach()
-        if (not torch.isnan(grad)) and isinstance(self.pos_rate, torch.Tensor):
-            self.optimizer.zero_grad()
-            self.pos_rate.backward(grad)
-            self.optimizer.step()
+        if isinstance(self.pos_rate, torch.Tensor):
+            if self.initial:
+                self.initial = False
+                pos_rate = (pos_loss / (pos_loss + neg_loss)).detach()
+                alpha = (pos_rate / (1. - pos_rate)).log().cpu().item()
+                self.alpha.fill_(alpha)
+            else:
+                grad = (neg_loss - pos_loss).detach()
+                if not torch.isnan(grad):
+                    self.optimizer.zero_grad()
+                    self.pos_rate.backward(grad)
+                    self.optimizer.step()
+
             self.pos_rate = self.alpha.sigmoid()
             self.sampler.update(self.pos_rate)
 
