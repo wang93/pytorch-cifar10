@@ -13,7 +13,6 @@ class SampleRateSampler(Sampler):
     def __init__(self, data_source):
         super(SampleRateSampler, self).__init__(data_source)
         self.data_source = data_source
-        # self.alpha = torch.nn.Parameter(torch.tensor(0.))
         self.pos_rate = 0.5
         self.sample_num_per_epoch = len(data_source)
 

@@ -10,6 +10,7 @@ class SRL_BCELoss(nn.Module):
             raise TypeError
 
         super(SRL_BCELoss, self).__init__()
+        self.sampler = sampler
 
         self.alpha = nn.Parameter(torch.tensor(0.).cuda())
         if pos_rate is None:
@@ -17,7 +18,6 @@ class SRL_BCELoss(nn.Module):
         else:
             self.pos_rate = pos_rate
 
-        self.sampler = sampler
         self.sampler.update(self.pos_rate)
         self.norm = norm
         self.in_train = in_train
@@ -80,13 +80,14 @@ class SRL_BCELoss(nn.Module):
 
         loss = losses.mean()
 
-        # update pos_rate
+        # adjust pos_rate
         if isinstance(self.pos_rate, torch.Tensor):
             if self.initial:
                 self.initial = False
                 pos_rate = (pos_loss / (pos_loss + neg_loss)).detach()
                 alpha = (pos_rate / (1. - pos_rate)).log().cpu().item()
                 self.alpha = nn.Parameter(torch.tensor(alpha).cuda())
+                self.optimizer.param_groups[0]['params'] = [self.alpha]
             else:
                 grad = (neg_loss - pos_loss).detach()
                 if not torch.isnan(grad):
