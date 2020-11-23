@@ -86,8 +86,9 @@ class SRL_BCELoss(nn.Module):
                 self.initial = False
                 pos_rate = (pos_loss / (pos_loss + neg_loss)).detach()
                 alpha = (pos_rate / (1. - pos_rate)).log().cpu().item()
-                self.alpha = nn.Parameter(torch.tensor(alpha).cuda())
-                self.optimizer.param_groups[0]['params'] = [self.alpha]
+                self.alpha.data = torch.tensor(alpha).cuda()
+                # self.alpha = nn.Parameter(torch.tensor(alpha).cuda())
+                # self.optimizer.param_groups[0]['params'] = [self.alpha]
             else:
                 grad = (neg_loss - pos_loss).detach()
                 if not torch.isnan(grad):
