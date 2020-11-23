@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from torch.optim import SGD, Adam, AdamW
+from torch.optim import SGD, Adam, AdamW, RMSprop
 from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 
@@ -49,6 +49,12 @@ class SRL_BCELoss(nn.Module):
                               betas=(0., 0.999),
                               eps=1e-8,
                               amsgrad=False)
+
+        elif optim == 'rmsprop':
+            default = {'lr': lr, 'weight_decay': weight_decay}
+            optimizer = RMSprop(param_groups, **default,
+                                alpha=0.999,
+                                eps=1e-8)
 
         elif optim == 'adammw':
             from utils.optimizers import AdamMW
