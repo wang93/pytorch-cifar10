@@ -273,6 +273,16 @@ class Solver(object):
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
 
+            # srl
+            self.model.eval()
+            self.criterion.train()
+            val_data, val_target = self.val_loader.next()
+            val_data, val_target = val_data.cuda(), val_target.cuda()
+            with torch.no_grad():
+                val_output = self.model(val_data)
+            self.criterion(val_output, val_target)
+
+            # optimize model params
             self.model.train()
             self.criterion.eval()
             self.optimizer.zero_grad()
@@ -288,15 +298,7 @@ class Solver(object):
             train_correct += np.sum(prediction[1].cpu().numpy()
                                     == target.cpu().numpy())  # train_correct incremented by one if predicted right
 
-            # srl
-            self.model.eval()
-            self.criterion.train()
-            val_data, val_target = self.val_loader.next()
-            val_data, val_target = val_data.cuda(), val_target.cuda()
-            with torch.no_grad():
-                val_output = self.model(val_data)
-            self.criterion(val_output, val_target)
-
+            # record
             global_step += 1
             self.recorder.record_iter(loss, global_step,
                                       optimizer=self.optimizer,
