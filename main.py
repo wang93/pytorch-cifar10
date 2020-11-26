@@ -13,6 +13,7 @@ from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
 from SampleRateLearning.special_batchnorm import global_variables
 from copy import deepcopy
+from utils.lr_strategy_generator import get_lr_strategy
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -41,6 +42,8 @@ def main():
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
     parser.add_argument('--special_bn', default=-1, type=int, help='version of stable bn')
+    parser.add_argument('--warmup_till', '-wt', default=1, type=int, help='version of stable bn')
+    parser.add_argument('--warmup_mode', '-wm', default='const', type=str, help='version of stable bn')
     args = parser.parse_args()
 
     if args.srl and args.val_ratio <= 0.:
@@ -214,7 +217,12 @@ class Solver(object):
         else:
             raise NotImplementedError
 
-        self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
+        # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
+        self.scheduler = get_lr_strategy(self.optimizer,
+                                         milestones=[75, 150],
+                                         gamma=0.5,
+                                         warmup_till=self.config.warmup_till,
+                                         warmup_mode=self.config.warmup_mode)
 
     def train(self, epoch):
         self.model.train()
