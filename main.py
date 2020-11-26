@@ -378,7 +378,8 @@ class Solver(object):
         accuracy = 0
         worst_precision = 0
         for epoch in range(1, self.epochs + 1):
-            self.scheduler.step(epoch)
+            #self.scheduler.step(epoch)
+            self.scheduler(epoch)
             if self.srl and self.srl_lr < 0:
                 cur_lr = self.optimizer.param_groups[0]['lr']
                 self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
