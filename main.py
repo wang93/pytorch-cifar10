@@ -44,6 +44,7 @@ def main():
     parser.add_argument('--special_bn', default=-1, type=int, help='version of stable bn')
     parser.add_argument('--warmup_till', '-wt', default=1, type=int, help='version of stable bn')
     parser.add_argument('--warmup_mode', '-wm', default='const', type=str, help='version of stable bn')
+    parser.add_argument("--weight_center", '-wc', action="store_true", help="centralize all the weights")
     args = parser.parse_args()
 
     if args.srl and args.val_ratio <= 0.:
@@ -207,6 +208,11 @@ class Solver(object):
             model = sbn.convert_model(model)
 
         self.model = nn.DataParallel(model).cuda()
+
+        if self.config.weight_center:
+            from WeightModification.recentralize import recentralize
+            recentralize(self.model)
+
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         elif self.config.optim == 'adamw':
