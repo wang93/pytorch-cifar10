@@ -2,8 +2,6 @@ from __future__ import absolute_import
 
 from numpy import clip
 from torch.utils.data.sampler import Sampler
-# from torch.distributions.binomial import Binomial
-# from numpy.random import binomial
 
 from queue import Queue
 from random import sample as randsample
