@@ -217,7 +217,7 @@ class Solver(object):
 
         if self.config.final_bn:
             from SampleRateLearning.special_batchnorm.batchnorm40 import BatchNorm1d as final_bn1d
-            self.final_bn = final_bn1d()
+            self.final_bn = nn.DataParallel(final_bn1d()).cuda()
 
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
