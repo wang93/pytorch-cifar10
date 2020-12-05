@@ -83,6 +83,7 @@ class Solver(object):
         self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
         self.special_bn = config.special_bn
         self.config = config
+        self.final_bn = None
 
         global_variables.classes_num = len(self.classes)
         global_variables.train_batch_size = self.train_batch_size
@@ -215,7 +216,8 @@ class Solver(object):
             recentralize(self.model)
 
         if self.config.final_bn:
-            raise NotImplementedError
+            from SampleRateLearning.special_batchnorm.batchnorm40 import BatchNorm1d as final_bn1d
+            self.final_bn = final_bn1d()
 
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
@@ -257,6 +259,8 @@ class Solver(object):
 
             self.optimizer.zero_grad()
             output = self.model(data)
+            if self.final_bn is not None:
+                output = self.final_bn(output)
             loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
@@ -296,6 +300,8 @@ class Solver(object):
             self.criterion.eval()
             self.optimizer.zero_grad()
             output = self.model(data)
+            if self.final_bn is not None:
+                output = self.final_bn(output)
             loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
