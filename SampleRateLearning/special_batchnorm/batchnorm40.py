@@ -17,8 +17,8 @@ class BatchNorm1d(origin_bn1d):
         if self.num_batches_tracked == 0:
             self.train()
             self.num_features = input.size(1)
-            self.running_mean = torch.zeros(self.num_features)
-            self.running_var = torch.zeros(self.num_features)
+            self.running_mean = torch.zeros(self.num_features).cuda()
+            self.running_var = torch.zeros(self.num_features).cuda()
         else:
             self.eval()
 
@@ -26,9 +26,15 @@ class BatchNorm1d(origin_bn1d):
 
 
 class BatchNorm2d(origin_bn2d):
+    def __init__(self, eps=1e-5):
+        super(origin_bn1d, self).__init__(128, eps, 1., False, True)
+
     def forward(self, input):
         if self.num_batches_tracked == 0:
             self.train()
+            self.num_features = input.size(1)
+            self.running_mean = torch.zeros(self.num_features).cuda()
+            self.running_var = torch.zeros(self.num_features).cuda()
         else:
             self.eval()
 
