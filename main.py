@@ -45,6 +45,7 @@ def main():
     parser.add_argument('--warmup_till', '-wt', default=1, type=int, help='version of stable bn')
     parser.add_argument('--warmup_mode', '-wm', default='const', type=str, help='version of stable bn')
     parser.add_argument("--weight_center", '-wc', action="store_true", help="centralize all the weights")
+    parser.add_argument("--final_bn", action="store_true", help="bn after the final layer")
     args = parser.parse_args()
 
     if args.srl and args.val_ratio <= 0.:
@@ -213,6 +214,9 @@ class Solver(object):
             from WeightModification.recentralize import recentralize
             recentralize(self.model)
 
+        if self.config.final_bn:
+            raise NotImplementedError
+
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         elif self.config.optim == 'adamw':
@@ -287,15 +291,6 @@ class Solver(object):
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
 
-            # srl
-            self.model.eval()
-            self.criterion.train()
-            val_data, val_target = self.val_loader.next()
-            val_data, val_target = val_data.cuda(), val_target.cuda()
-            with torch.no_grad():
-                val_output = self.model(val_data)
-            self.criterion(val_output, val_target)
-
             # optimize model params
             self.model.train()
             self.criterion.eval()
@@ -304,6 +299,15 @@ class Solver(object):
             loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
+
+            # srl
+            self.model.eval()
+            self.criterion.train()
+            val_data, val_target = self.val_loader.next()
+            val_data, val_target = val_data.cuda(), val_target.cuda()
+            with torch.no_grad():
+                val_output = self.model(val_data)
+            self.criterion(val_output, val_target)
 
             train_loss += loss.item()
             prediction = torch.max(output, 1)  # second param "1" represents the dimension to be reduced
