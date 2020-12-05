@@ -22,7 +22,7 @@ class BatchNorm1d(origin_bn1d):
         else:
             self.eval()
 
-        super(BatchNorm1d, self).forward(input)
+        return super(BatchNorm1d, self).forward(input)
 
 
 class BatchNorm2d(origin_bn2d):
@@ -38,7 +38,7 @@ class BatchNorm2d(origin_bn2d):
         else:
             self.eval()
 
-        super(BatchNorm2d, self).forward(input)
+        return super(BatchNorm2d, self).forward(input)
 
 
 # def convert_model(module):
