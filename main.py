@@ -168,7 +168,7 @@ class Solver(object):
                                         in_train=self.config.srl_in_train,
                                         norm=self.config.srl_norm,
                                         alternate=self.config.srl_alternate,
-                                        soft_precision=self.config.srl_soft_precison,
+                                        soft_precision=self.config.srl_soft_precision,
                                         ).cuda()
 
         else:
