@@ -38,6 +38,7 @@ def main():
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
     parser.add_argument('--srl_norm', action="store_true", help="use normed srl")
     parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
+    parser.add_argument("--srl_soft_precision", '-ssp', action="store_dalse", help="srl according to soft precision")
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
@@ -166,7 +167,8 @@ class Solver(object):
                                         pos_rate=self.config.pos_rate,
                                         in_train=self.config.srl_in_train,
                                         norm=self.config.srl_norm,
-                                        alternate=self.config.srl_alternate
+                                        alternate=self.config.srl_alternate,
+                                        soft_precision=self.config.srl_soft_precison,
                                         ).cuda()
 
         else:

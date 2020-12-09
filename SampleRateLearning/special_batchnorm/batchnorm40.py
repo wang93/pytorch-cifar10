@@ -27,7 +27,7 @@ class BatchNorm1d(origin_bn1d):
 
 class BatchNorm2d(origin_bn2d):
     def __init__(self, eps=1e-5):
-        super(origin_bn1d, self).__init__(128, eps, 1., False, True)
+        super(origin_bn2d, self).__init__(128, eps, 1., False, True)
 
     def forward(self, input):
         if self.num_batches_tracked == 0:

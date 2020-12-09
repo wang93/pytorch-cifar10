@@ -5,7 +5,8 @@ from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 
 class SRL_BCELoss(nn.Module):
-    def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0., norm=False, pos_rate=None, in_train=True, alternate=False):
+    def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
+                 norm=False, pos_rate=None, in_train=True, alternate=False, soft_precision=False):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
@@ -23,6 +24,7 @@ class SRL_BCELoss(nn.Module):
         self.in_train = in_train
 
         self.alternate = alternate
+        self.soft_precision = soft_precision
 
         param_groups = [{'params': [self.alpha]}]
         if optim == "sgd":
@@ -161,14 +163,24 @@ class SRL_BCELoss(nn.Module):
         return loss
 
     def get_losses(self, scores, labels: torch.Tensor):
-        losses = nn.BCELoss(reduction='none')(scores.sigmoid(), labels)
         is_pos = labels.type(torch.bool)
+        scores = scores.sigmoid()
+        if self.soft_precision and self.alternate and self.training:
+            losses = scores
+            losses[is_pos] = 1. - losses[is_pos]
+        else:
+            losses = nn.BCELoss(reduction='none')(scores, labels)
         return losses, is_pos
 
 
 class SRL_CELoss(SRL_BCELoss):
     def get_losses(self, scores, labels: torch.Tensor):
         labels = labels.to(dtype=torch.long).view(-1)
-        losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
         is_pos = labels.type(torch.bool)
+        if self.soft_precision and self.alternate and self.training:
+            scores = torch.nn.functional.softmax(scores, dim=1)
+            losses = scores[:, 1].view(-1)
+            losses[is_pos] = 1. - losses[is_pos]
+        else:
+            losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
         return losses, is_pos
