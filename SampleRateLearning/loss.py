@@ -175,7 +175,6 @@ class SRL_BCELoss(nn.Module):
 
 class SRL_CELoss(SRL_BCELoss):
     def get_losses(self, scores, labels: torch.Tensor):
-        print('using get_losses in SRL_CELoss')
         labels = labels.to(dtype=torch.long).view(-1)
         is_pos = labels.type(torch.bool)
         if self.soft_precision and self.alternate and self.training:
@@ -247,7 +246,7 @@ class SRWL_BCELoss(SRL_BCELoss):
         return loss
 
 
-class SRWL_CELoss(SRL_CELoss, SRWL_BCELoss):
+class SRWL_CELoss(SRWL_BCELoss):
     def get_losses(self, scores, labels: torch.Tensor):
         labels = labels.to(dtype=torch.long).view(-1)
         is_pos = labels.type(torch.bool)
