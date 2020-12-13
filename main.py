@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
     parser.add_argument('--srl_norm', action="store_true", help="use normed srl")
+    parser.add_argument('--srl_weight', action="store_true", help="srl with equal gradient")
     parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
     parser.add_argument("--srl_soft_precision", '-ssp', action="store_true", help="srl according to soft precision")
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
@@ -156,20 +157,23 @@ class Solver(object):
 
         if self.srl:
             from SampleRateLearning.sampler import SampleRateBatchSampler
-            from SampleRateLearning.loss import SRL_CELoss
-
             batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.train_batch_size)
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_sampler=batch_sampler)
 
-            self.criterion = SRL_CELoss(sampler=batch_sampler,
-                                        optim=self.config.srl_optim,
-                                        lr=max(self.srl_lr, 0),
-                                        pos_rate=self.config.pos_rate,
-                                        in_train=self.config.srl_in_train,
-                                        norm=self.config.srl_norm,
-                                        alternate=self.config.srl_alternate,
-                                        soft_precision=self.config.srl_soft_precision,
-                                        ).cuda()
+            if self.config.srl_weight:
+                from SampleRateLearning.loss import SRWL_CELoss as SRL_LOSS
+            else:
+                from SampleRateLearning.loss import SRL_CELoss as SRL_LOSS
+
+            self.criterion = SRL_LOSS(sampler=batch_sampler,
+                                      optim=self.config.srl_optim,
+                                      lr=max(self.srl_lr, 0),
+                                      pos_rate=self.config.pos_rate,
+                                      in_train=self.config.srl_in_train,
+                                      norm=self.config.srl_norm,
+                                      alternate=self.config.srl_alternate,
+                                      soft_precision=self.config.srl_soft_precision,
+                                      ).cuda()
 
         else:
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size,

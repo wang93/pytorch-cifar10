@@ -184,3 +184,77 @@ class SRL_CELoss(SRL_BCELoss):
         else:
             losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
         return losses, is_pos
+
+
+class SRWL_BCELoss(SRL_BCELoss):
+    def forward(self, scores, labels: torch.Tensor):
+        if not self.alternate:
+            raise NotImplementedError
+
+        if self.training and self.alternate:
+            return self.forward2(scores, labels)
+
+        losses, is_pos = self.get_losses(scores, labels)
+        if is_pos.size(0) > self.sampler.batch_size:
+            raise NotImplementedError
+            # if not self.in_train:
+            #     # use val data to estimate pos_loss and neg_loss
+            #     val_losses = losses[self.sampler.batch_size:]
+            #     val_is_pos = is_pos[self.sampler.batch_size:]
+            #     train_is_pos = is_pos[:self.sampler.batch_size]
+            #     pos_loss = val_losses[val_is_pos].mean()
+            #     neg_loss = val_losses[~val_is_pos].mean()
+            #     train_losses = losses[:self.sampler.batch_size]
+            #     train_pos_loss = train_losses[train_is_pos].mean()
+            #     train_neg_loss = train_losses[~train_is_pos].mean()
+            #     self.train_losses = [train_neg_loss, train_pos_loss]
+            #     self.val_losses = [neg_loss, pos_loss]
+            # else:
+            #     raise NotImplementedError
+
+        else:
+            pos_loss = losses[is_pos].mean()
+            neg_loss = losses[~is_pos].mean()
+            # train_losses = losses
+            self.train_losses = [neg_loss, pos_loss]
+            # self.val_losses = None
+
+        if self.norm:
+            raise NotImplementedError
+            # loss = (train_neg_loss + train_pos_loss) / 2.
+
+        real_pos_rate = sum(is_pos.view(-1)) / float(is_pos.numel())
+
+        rl_pos = real_pos_rate * pos_loss
+        rl_neg = (1. - real_pos_rate) * neg_loss
+
+        weight_pos = 2*rl_neg/(rl_pos+rl_neg)
+        weight_neg = 2-weight_pos
+
+        loss = weight_pos*pos_loss*real_pos_rate + weight_neg*neg_loss*(1.-real_pos_rate)
+
+        # update pos_rate
+        # if self.training:
+        #     grad = (neg_loss - pos_loss).detach()
+        #     if (not torch.isnan(grad)) and isinstance(self.pos_rate, torch.Tensor):
+        #         self.optimizer.zero_grad()
+        #         self.pos_rate.backward(grad)
+        #         self.optimizer.step()
+        #         self.pos_rate = self.alpha.sigmoid()
+        #         self.sampler.update(self.pos_rate)
+
+        return loss
+
+
+class SRWL_CELoss(SRL_CELoss, SRWL_BCELoss):
+    def get_losses(self, scores, labels: torch.Tensor):
+        print('using SRWL_CELoss')
+        labels = labels.to(dtype=torch.long).view(-1)
+        is_pos = labels.type(torch.bool)
+        if self.soft_precision and self.alternate and self.training:
+            scores = torch.nn.functional.softmax(scores, dim=1)
+            losses = scores[:, 1].view(-1)
+            losses[is_pos] = 1. - losses[is_pos]
+        else:
+            losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
+        return losses, is_pos
