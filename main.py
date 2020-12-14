@@ -13,7 +13,6 @@ from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
 from SampleRateLearning.special_batchnorm import global_variables
 from copy import deepcopy
-from utils.lr_strategy_generator import MileStoneLR_WarmUp
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -40,6 +39,8 @@ def main():
     parser.add_argument('--srl_weight', action="store_true", help="srl with equal gradient")
     parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
     parser.add_argument("--srl_soft_precision", '-ssp', action="store_true", help="srl according to soft precision")
+    parser.add_argument("--srl_posrate_lr", '-spl', action="store_true",
+                        help="the lr of model is multiplied by min(posrate, 1-posrate)")
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
@@ -236,11 +237,16 @@ class Solver(object):
             raise NotImplementedError
 
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-        self.scheduler = MileStoneLR_WarmUp(self.optimizer,
-                                            milestones=[75, 150],
-                                            gamma=0.5,
-                                            warmup_till=self.config.warmup_till,
-                                            warmup_mode=self.config.warmup_mode)
+        if self.config.srl_posrate_lr:
+            from SampleRateLearning.lr_strategy_generator import PosRateLR
+            self.scheduler = PosRateLR(self.optimizer)
+        else:
+            from utils.lr_strategy_generator import MileStoneLR_WarmUp
+            self.scheduler = MileStoneLR_WarmUp(self.optimizer,
+                                                milestones=[75, 150],
+                                                gamma=0.5,
+                                                warmup_till=self.config.warmup_till,
+                                                warmup_mode=self.config.warmup_mode)
 
     def train(self, epoch):
         self.model.train()
@@ -255,6 +261,9 @@ class Solver(object):
         global_step = (epoch - 1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
+            if self.config.srl_posrate_lr:
+                self.scheduler.step(self.criterion.pos_rate)
+
             if self.val_loader is not None:
                 val_data, val_target = self.val_loader.next()
                 data = torch.cat((data, val_data), dim=0)
@@ -298,6 +307,9 @@ class Solver(object):
         global_step = (epoch - 1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
+            if self.config.srl_posrate_lr:
+                self.scheduler.step(self.criterion.pos_rate)
+
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
 
@@ -401,7 +413,10 @@ class Solver(object):
         worst_precision = 0
         for epoch in range(1, self.epochs + 1):
             #self.scheduler.step(epoch)
-            self.scheduler.step(epoch)
+            if self.config.srl_posrate_lr:
+                self.scheduler.step(self.criterion.pos_rate)
+            else:
+                self.scheduler.step(epoch)
             if self.srl and self.srl_lr < 0:
                 cur_lr = self.optimizer.param_groups[0]['lr']
                 self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
