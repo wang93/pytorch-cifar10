@@ -75,7 +75,7 @@ class SampleRateBatchSampler(SampleRateSampler):
         # b_num = round(self.batch_size * self.pos_rate)
         # b_num = int(clip(b_num, 1, self.batch_size-1))
         float_b_num = self.batch_size * self.pos_rate
-        b_num = float_b_num // 1
+        b_num = int(float_b_num)
         if (float_b_num % 1) > 0:
             b_num += (float_b_num % 1) > random()
         a_num = self.batch_size - b_num
