@@ -36,7 +36,7 @@ class SummaryWriters(object):
         self.summary_writer.add_scalar('accuracy', acc, global_step)
         self.summary_writer.add_scalar('worst precision', normal_scalar(min(precisions)), global_step)
         for writer, precision in zip(self.class_summary_writers, precisions):
-            writer.add_scalar('precision', normal_scalar(precision), global_step)
+            writer.add_scalar('test_precisions', normal_scalar(precision), global_step)
 
     def record_iter(self, loss, global_step, optimizer=None, criterion=None):
         if loss is not None:

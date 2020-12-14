@@ -13,7 +13,7 @@ from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
 from SampleRateLearning.special_batchnorm import global_variables
 from copy import deepcopy
-from utils.lr_strategy_generator import get_lr_strategy
+from utils.lr_strategy_generator import MileStoneLR_WarmUp
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -236,11 +236,11 @@ class Solver(object):
             raise NotImplementedError
 
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-        self.scheduler = get_lr_strategy(self.optimizer,
-                                         milestones=[75, 150],
-                                         gamma=0.5,
-                                         warmup_till=self.config.warmup_till,
-                                         warmup_mode=self.config.warmup_mode)
+        self.scheduler = MileStoneLR_WarmUp(self.optimizer,
+                                            milestones=[75, 150],
+                                            gamma=0.5,
+                                            warmup_till=self.config.warmup_till,
+                                            warmup_mode=self.config.warmup_mode)
 
     def train(self, epoch):
         self.model.train()
@@ -401,7 +401,7 @@ class Solver(object):
         worst_precision = 0
         for epoch in range(1, self.epochs + 1):
             #self.scheduler.step(epoch)
-            self.scheduler(epoch)
+            self.scheduler.step(epoch)
             if self.srl and self.srl_lr < 0:
                 cur_lr = self.optimizer.param_groups[0]['lr']
                 self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
