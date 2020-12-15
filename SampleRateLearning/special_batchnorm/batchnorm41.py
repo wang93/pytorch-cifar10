@@ -10,6 +10,11 @@ class BatchNorm1d(origin_bn1d):
         self.base_momentum = base_momentum
 
     def forward(self, input: torch.Tensor):
+        if self.num_batches_tracked == 0:
+            self.num_features = input.size(1)
+            self.running_mean = torch.zeros(self.num_features).cuda()
+            self.running_var = torch.zeros(self.num_features).cuda()
+
         training = False
         if self.training:
             training = True
@@ -31,6 +36,11 @@ class BatchNorm2d(origin_bn2d):
         self.base_momentum = base_momentum
 
     def forward(self, input: torch.Tensor):
+        if self.num_batches_tracked == 0:
+            self.num_features = input.size(1)
+            self.running_mean = torch.zeros(self.num_features).cuda()
+            self.running_var = torch.zeros(self.num_features).cuda()
+
         training = False
         if self.training:
             training = True
