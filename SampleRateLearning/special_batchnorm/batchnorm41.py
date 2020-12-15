@@ -5,7 +5,7 @@ from torch.nn.modules.batchnorm import BatchNorm1d as origin_bn1d, BatchNorm2d a
 
 
 class BatchNorm1d(origin_bn1d):
-    def __init__(self, eps=1e-5, base_momentum=1e-5):
+    def __init__(self, eps=1e-5, base_momentum=5e-3):
         super(BatchNorm1d, self).__init__(128, eps, 1., False, True)
         self.base_momentum = base_momentum
 
