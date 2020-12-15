@@ -363,10 +363,9 @@ class Solver(object):
         return train_loss, train_correct / total
 
     def test(self, epoch):
-        if self.final_bn is not None:
-            raise NotImplementedError
-
         self.model.eval()
+        if self.final_bn is not None:
+            self.final_bn.eval()
         if isinstance(self.criterion, nn.Module):
             self.criterion.eval()
 
@@ -380,6 +379,8 @@ class Solver(object):
             for batch_num, (data, target) in enumerate(self.test_loader):
                 data, target = data.cuda(), target.cuda()
                 output = self.model(data)
+                if self.final_bn is not None:
+                    output = self.final_bn(output)
                 loss = self.criterion(output, target)
                 test_loss += loss.item()
                 _, prediction = torch.max(output, 1)
