@@ -48,7 +48,8 @@ def main():
     parser.add_argument('--warmup_till', '-wt', default=1, type=int, help='version of stable bn')
     parser.add_argument('--warmup_mode', '-wm', default='const', type=str, help='version of stable bn')
     parser.add_argument("--weight_center", '-wc', action="store_true", help="centralize all the weights")
-    parser.add_argument("--final_bn", action="store_true", help="bn after the final layer")
+    # parser.add_argument("--final_bn", action="store_true", help="bn after the final layer")
+    parser.add_argument("--final_bn", default=-1., type=float, help='momentum of final bn')
     args = parser.parse_args()
 
     if args.srl and args.val_ratio <= 0.:
@@ -222,9 +223,12 @@ class Solver(object):
             from WeightModification.recentralize import recentralize
             recentralize(self.model)
 
-        if self.config.final_bn:
-            from SampleRateLearning.special_batchnorm.batchnorm40 import BatchNorm1d as final_bn1d
-            self.final_bn = nn.DataParallel(final_bn1d()).cuda()
+        # if self.config.final_bn:
+        #     from SampleRateLearning.special_batchnorm.batchnorm40 import BatchNorm1d as final_bn1d
+        #     self.final_bn = nn.DataParallel(final_bn1d()).cuda()
+        if self.config.final_bn > 0.:
+            from SampleRateLearning.special_batchnorm.batchnorm41 import BatchNorm1d as final_bn1d
+            self.final_bn = nn.DataParallel(final_bn1d(base_momentum=self.config.final_bn)).cuda()
 
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
