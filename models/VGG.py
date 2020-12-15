@@ -24,7 +24,7 @@ class VGG(nn.Module):
             if isinstance(s, int):
                 num_features = s
                 break
-        self.classifier = nn.Linear(num_features, class_num, bias=False)
+        self.classifier = nn.Linear(num_features, class_num, bias=True)
 
     def forward(self, x):
         out = self.features(x)
