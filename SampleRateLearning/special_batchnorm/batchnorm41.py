@@ -10,22 +10,37 @@ class BatchNorm1d(origin_bn1d):
         self.base_momentum = base_momentum
 
     def forward(self, input: torch.Tensor):
+        training = False
         if self.training:
+            training = True
             self.num_batches_tracked += 1
             self.momentum = self.base_momentum + (1. - self.base_momentum) ** self.num_batches_tracked
             self.eval()
 
-        return super(BatchNorm1d, self).forward(input)
+        result = super(BatchNorm1d, self).forward(input)
+
+        if training:
+            self.train()
+
+        return result
 
 
 class BatchNorm2d(origin_bn2d):
-    def __init__(self, eps=1e-5, base_momentum=0.01):
+    def __init__(self, eps=1e-5, base_momentum=5e-3):
         super(BatchNorm2d, self).__init__(128, eps, 1., False, True)
         self.base_momentum = base_momentum
 
     def forward(self, input: torch.Tensor):
+        training = False
         if self.training:
-            self.momentum = self.base_momentum + (1. - self.base_momentum) ** (self.num_batches_tracked + 1)
+            training = True
+            self.num_batches_tracked += 1
+            self.momentum = self.base_momentum + (1. - self.base_momentum) ** self.num_batches_tracked
             self.eval()
 
-        return super(BatchNorm2d, self).forward(input)
+        result = super(BatchNorm2d, self).forward(input)
+
+        if training:
+            self.train()
+
+        return result
