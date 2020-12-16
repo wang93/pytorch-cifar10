@@ -61,7 +61,7 @@ class DenseNet(nn.Module):
         num_planes += num_block[3] * growth_rate
 
         self.bn = nn.BatchNorm2d(num_planes)
-        self.linear = nn.Linear(num_planes, class_num, bias=False)
+        self.final_fc = nn.Linear(num_planes, class_num, bias=False)
 
     def _make_dense_layers(self, block, in_planes, num_block):
         layers = []
@@ -78,7 +78,7 @@ class DenseNet(nn.Module):
         x = self.dense4(x)
         x = func.avg_pool2d(func.relu(self.bn(x)), 4)
         x = x.view(x.size(0), -1)
-        x = self.linear(x)
+        x = self.final_fc(x)
         return x
 
 
