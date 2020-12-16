@@ -225,7 +225,7 @@ class Solver(object):
             recentralize(self.model)
 
         if self.config.final_zero:
-            final_fc = model.module.final_fc
+            final_fc = self.model.module.final_fc
             final_fc.weight.data = torch.zeros_like(final_fc.weight.data)
             if final_fc.bias is not None:
                 final_fc.bias.data = torch.zeros_like(final_fc.bias.data)
