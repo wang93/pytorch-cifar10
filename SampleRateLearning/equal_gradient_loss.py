@@ -48,8 +48,8 @@ class Equal_Gradient_SRL_CELoss(ori_SRL_CELoss):
         probs = self.softmax(scores.detach())
         g_pos = probs[is_pos, 0]
         g_neg = probs[~is_pos, 1]
-        G_pos = torch.sum(g_pos.square())
-        G_neg = torch.sum(g_neg.square())
+        G_pos = torch.sum(g_pos)
+        G_neg = torch.sum(g_neg)
         weight_base = (G_neg+G_pos)/(2*self.sampler.batch_size)
         weight_pos = weight_base / G_pos
         weight_neg = weight_base / G_neg
