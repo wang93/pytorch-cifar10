@@ -48,11 +48,12 @@ class Equal_Gradient_SRL_CELoss(ori_SRL_CELoss):
         probs = self.softmax(scores.detach())
         g_pos = probs[is_pos, 0]
         g_neg = probs[~is_pos, 1]
-        G_pos = torch.mean(g_pos)
-        G_neg = torch.mean(g_neg)
-        weight_base = (G_neg+G_pos)/(2*self.sampler.batch_size)
-        weight_pos = weight_base / G_pos
-        weight_neg = weight_base / G_neg
+        mean_g_pos = torch.mean(g_pos)
+        mean_g_neg = torch.mean(g_neg)
+        weight_base = torch.sum(g_pos) + torch.sum(g_neg) / float(self.sampler.batch_size)
+
+        weight_pos = weight_base / mean_g_pos
+        weight_neg = weight_base / mean_g_neg
         weights = torch.tensor([weight_neg, weight_pos]).cuda()
         losses = nn.CrossEntropyLoss(reduction='none', weight=weights)(scores, labels)
 
