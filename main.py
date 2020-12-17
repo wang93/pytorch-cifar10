@@ -41,6 +41,7 @@ def main():
     parser.add_argument("--srl_soft_precision", '-ssp', action="store_true", help="srl according to soft precision")
     parser.add_argument("--srl_posrate_lr", '-spl', action="store_true",
                         help="the lr of model is multiplied by min(posrate, 1-posrate)")
+    parser.add_argument("--equal_gradient", '-eg', action="store_true", help="using equal-gradient loss")
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
@@ -165,6 +166,8 @@ class Solver(object):
 
             if self.config.srl_weight:
                 from SampleRateLearning.loss import SRWL_CELoss as SRL_LOSS
+            elif self.config.equal_gradient:
+                from SampleRateLearning.equal_gradient_loss import Equal_Gradient_SRL_CELoss as SRL_LOSS
             else:
                 from SampleRateLearning.loss import SRL_CELoss as SRL_LOSS
 
