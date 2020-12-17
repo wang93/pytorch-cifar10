@@ -44,7 +44,6 @@ class Equal_Gradient_SRL_CELoss(ori_SRL_CELoss):
             return self.forward2(scores, labels)
 
         # losses, is_pos = self.get_losses(scores, labels)
-        batchsize = self.sampler.batch_size
         labels = labels.to(dtype=torch.long).view(-1)
         is_pos = labels.type(torch.bool)
         probs = self.softmax(scores.detach())
@@ -52,7 +51,7 @@ class Equal_Gradient_SRL_CELoss(ori_SRL_CELoss):
         g_neg = probs[~is_pos, 1]
         G_pos = torch.sum(g_pos)
         G_neg = torch.sum(g_neg)
-        weight_base = (G_neg+G_pos)/(2*batchsize)
+        weight_base = (G_neg+G_pos)/(2*self.sampler.batch_size)
         weight_pos = weight_base / G_pos
         weight_neg = weight_base / G_neg
         weights = torch.tensor([weight_neg, weight_pos])
