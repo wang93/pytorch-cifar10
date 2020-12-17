@@ -54,7 +54,7 @@ class Equal_Gradient_SRL_CELoss(ori_SRL_CELoss):
         weight_base = (G_neg+G_pos)/(2*self.sampler.batch_size)
         weight_pos = weight_base / G_pos
         weight_neg = weight_base / G_neg
-        weights = torch.tensor([weight_neg, weight_pos])
+        weights = torch.tensor([weight_neg, weight_pos]).cuda()
         losses = nn.CrossEntropyLoss(reduction='none', weight=weights)(scores, labels)
 
         pos_loss = losses[is_pos].mean()
