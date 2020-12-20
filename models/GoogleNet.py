@@ -75,7 +75,7 @@ class GoogLeNet(nn.Module):
         self.b5 = Inception(832, 384, 192, 384, 48, 128, 128)
 
         self.avgpool = nn.AvgPool2d(8, stride=1)
-        self.linear = nn.Linear(1024, class_num, bias=False)
+        self.final_fc = nn.Linear(1024, class_num, bias=False)
 
     def forward(self, x):
         x = self.pre_layers(x)
@@ -92,5 +92,5 @@ class GoogLeNet(nn.Module):
         x = self.b5(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
-        x = self.linear(x)
+        x = self.final_fc(x)
         return x

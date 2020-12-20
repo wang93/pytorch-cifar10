@@ -31,11 +31,12 @@ class AlexNet(nn.Module):
             nn.Dropout(),
             nn.Linear(4096, 4096),
             nn.ReLU(inplace=True),
-            nn.Linear(4096, num_classes, bias=False),
         )
+        self.final_fc = nn.Linear(4096, num_classes, bias=False)
 
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), 256 * 2 * 2)
         x = self.classifier(x)
+        x = self.final_fc(x)
         return x

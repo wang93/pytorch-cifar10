@@ -24,13 +24,13 @@ class VGG(nn.Module):
             if isinstance(s, int):
                 num_features = s
                 break
-        self.classifier = nn.Linear(num_features, class_num, bias=False)
+        self.final_fc = nn.Linear(num_features, class_num, bias=False)
 
     def forward(self, x):
         out = self.features(x)
         out = nn.functional.adaptive_avg_pool2d(out, (1, 1))
         out = out.view(out.size(0), -1)
-        out = self.classifier(out)
+        out = self.final_fc(out)
         return out
 
     def _make_layers(self, cfg):

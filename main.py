@@ -41,6 +41,7 @@ def main():
     parser.add_argument("--srl_soft_precision", '-ssp', action="store_true", help="srl according to soft precision")
     parser.add_argument("--srl_posrate_lr", '-spl', action="store_true",
                         help="the lr of model is multiplied by min(posrate, 1-posrate)")
+    parser.add_argument("--equal_gradient", '-eg', action="store_true", help="using equal-gradient loss")
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
@@ -50,6 +51,7 @@ def main():
     parser.add_argument("--weight_center", '-wc', action="store_true", help="centralize all the weights")
     # parser.add_argument("--final_bn", action="store_true", help="bn after the final layer")
     parser.add_argument("--final_bn", default=-1., type=float, help='momentum of final bn')
+    parser.add_argument("--final_zero", action="store_true", help="set params in the final layer to zero")
     args = parser.parse_args()
 
     if args.srl and args.val_ratio <= 0.:
@@ -164,6 +166,8 @@ class Solver(object):
 
             if self.config.srl_weight:
                 from SampleRateLearning.loss import SRWL_CELoss as SRL_LOSS
+            elif self.config.equal_gradient:
+                from SampleRateLearning.equal_gradient_loss import Equal_Gradient_SRL_CELoss as SRL_LOSS
             else:
                 from SampleRateLearning.loss import SRL_CELoss as SRL_LOSS
 
@@ -222,6 +226,12 @@ class Solver(object):
         if self.config.weight_center:
             from WeightModification.recentralize import recentralize
             recentralize(self.model)
+
+        if self.config.final_zero:
+            final_fc = self.model.module.final_fc
+            final_fc.weight.data = torch.zeros_like(final_fc.weight.data)
+            if final_fc.bias is not None:
+                final_fc.bias.data = torch.zeros_like(final_fc.bias.data)
 
         # if self.config.final_bn:
         #     from SampleRateLearning.special_batchnorm.batchnorm40 import BatchNorm1d as final_bn1d
