@@ -125,7 +125,8 @@ class SRL_BCELoss(nn.Module):
         if self.norm:
             loss = (train_neg_loss + train_pos_loss) / 2.
         else:
-            losses = torch.cat((train_neg_losses * (1. - self.pos_rate), train_pos_losses * self.pos_rate), dim=0)
+            pos_rate = self.pos_rate.detach()
+            losses = torch.cat((train_neg_losses * (1. - pos_rate), train_pos_losses * pos_rate), dim=0)
             loss = losses.mean() * 2.
 
         return loss
