@@ -73,10 +73,10 @@ class SampleRateBatchSampler(SampleRateSampler):
 
         # b_num = binomial(self.batch_size, self.pos_rate)
 
-        # b_num = round(self.batch_size * self.pos_rate)
-        # b_num = int(clip(b_num, 1, self.batch_size-1))
+        b_num = round(self.batch_size * self.pos_rate)
+        b_num = int(clip(b_num, 1, self.batch_size-1))
 
-        b_num = round(self.batch_size * 0.5)
+        # b_num = round(self.batch_size * 0.5)
 
         # float_b_num = self.batch_size * self.pos_rate
         # b_num = int(float_b_num)
