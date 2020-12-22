@@ -21,17 +21,18 @@ class _BatchNorm(origin_BN):
 
     def forward(self, input: torch.Tensor):
         self._check_input_dim(input)
-        exponential_average_factor = 0.0
-        if self.training and self.track_running_stats:
-            if self.num_batches_tracked is not None:
-                self.num_batches_tracked += 1
-                if self.momentum is None:  # use cumulative moving average
-                    exponential_average_factor = 1.0 / float(self.num_batches_tracked)
-                else:  # use exponential moving average
-                    exponential_average_factor = self.momentum
 
         sz = input.size()
         if self.training:
+            exponential_average_factor = 0.0
+            if self.track_running_stats:
+                if self.num_batches_tracked is not None:
+                    self.num_batches_tracked += 1
+                    if self.momentum is None:  # use cumulative moving average
+                        exponential_average_factor = 1.0 / float(self.num_batches_tracked)
+                    else:  # use exponential moving average
+                        exponential_average_factor = self.momentum
+
             if input.dim() == 4:
                 reduced_dim = (0, 2, 3)
             elif input.dim() == 2:
