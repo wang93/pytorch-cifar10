@@ -40,9 +40,9 @@ class _BatchNorm(origin_BN):
             else:
                 raise NotImplementedError
 
-            data = input.detach()
-            di_mean = torch.mean(data, dim=reduced_dim, keepdim=False).detach()
-            di_var = torch.var(data, dim=reduced_dim, keepdim=False, unbiased=False).detach()
+            data = input.data
+            di_mean = torch.mean(data, dim=reduced_dim, keepdim=False)
+            di_var = torch.var(data, dim=reduced_dim, keepdim=False, unbiased=False)
 
             if self.track_running_stats:
                 self.running_mean = (1 - exponential_average_factor) * self.running_mean + exponential_average_factor * di_mean
@@ -52,12 +52,14 @@ class _BatchNorm(origin_BN):
                 self.running_mean = di_mean
                 self.running_var = di_var
 
-            y = (input - self.expand(di_mean, sz)) \
-                / self.expand(torch.sqrt(self.eps + di_var), sz)
+            # y = (input - self.expand(di_mean, sz)) \
+            #     / self.expand(torch.sqrt(self.eps + di_var), sz)
+            y = (input - di_mean.unsqueeze(1)) \
+                / torch.sqrt(self.eps + di_var).unsqueeze(1)
 
         else:
-            y = (input - self.expand(self.running_mean, sz)) \
-                / self.expand(torch.sqrt(self.eps + self.running_var), sz)
+            y = (input - self.running_mean.unsqueeze(1)) \
+                / torch.sqrt(self.eps + self.running_var).unsqueeze(1)
 
         if self.affine:
             z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)
