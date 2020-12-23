@@ -325,6 +325,8 @@ class Solver(object):
         global_step = (epoch - 1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
+            if self.config.dtype == 'double':
+                data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
 
             if self.config.srl_posrate_lr:
                 self.scheduler.step(self.criterion.pos_rate)
@@ -338,6 +340,8 @@ class Solver(object):
                 self.final_bn.eval()
             self.criterion.train()
             val_data, val_target = self.val_loader.next()
+            if self.config.dtype == 'double':
+                val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
             val_data, val_target = val_data.cuda(), val_target.cuda()
             with torch.no_grad():
                 val_output = self.model(val_data)
@@ -392,6 +396,8 @@ class Solver(object):
 
         with torch.no_grad():
             for batch_num, (data, target) in enumerate(self.test_loader):
+                if self.config.dtype == 'double':
+                    data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
                 data, target = data.cuda(), target.cuda()
                 output = self.model(data)
                 if self.final_bn is not None:
