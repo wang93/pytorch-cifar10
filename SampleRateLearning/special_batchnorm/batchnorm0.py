@@ -57,8 +57,8 @@ class _BatchNorm(origin_BN):
             di_var, di_mean = torch.var_mean(data, dim=reduced_dim, keepdim=False, unbiased=False)
 
             if self.track_running_stats:
-                self.running_mean = (1 - exponential_average_factor) * self.running_mean + exponential_average_factor * di_mean
-                self.running_var = (1 - exponential_average_factor) * self.running_var + exponential_average_factor * di_var
+                self.running_mean = (1. - exponential_average_factor) * self.running_mean + exponential_average_factor * di_mean
+                self.running_var = (1. - exponential_average_factor) * self.running_var + exponential_average_factor * di_var
 
             else:
                 self.running_mean = di_mean
