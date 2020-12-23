@@ -8,13 +8,13 @@ class _BatchNorm(origin_BN):
     @staticmethod
     def expand(stat, target_size):
         if len(target_size) == 4:
-            #stat = stat.unsqueeze(1).unsqueeze(2).expand(target_size[1:])
-            stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).expand(target_size[0], -1, target_size[2], target_size[3])
-            #stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).repeat(target_size[0], 1, target_size[2],target_size[3])
+            stat = stat.unsqueeze(1).unsqueeze(2).expand(target_size[1:])
+            # stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).expand(target_size[0], -1, target_size[2], target_size[3])
+            # stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).repeat(target_size[0], 1, target_size[2],target_size[3])
         elif len(target_size) == 2:
-            # pass
-            stat = stat.unsqueeze(0).expand(target_size[0], -1)
-            #stat = stat.unsqueeze(0).repeat(target_size[0], 1)
+            pass
+            # stat = stat.unsqueeze(0).expand(target_size[0], -1)
+            # stat = stat.unsqueeze(0).repeat(target_size[0], 1)
         else:
             raise NotImplementedError
 
@@ -46,7 +46,8 @@ class _BatchNorm(origin_BN):
 
             data = input.data
             di_mean = torch.mean(data, dim=reduced_dim, keepdim=False)
-            di_var = torch.var(data, dim=reduced_dim, keepdim=False, unbiased=False)
+            # di_var = torch.var(data, dim=reduced_dim, keepdim=False, unbiased=False)
+            di_var = torch.mean(data.square(), dim=reduced_dim, keepdim=False) - di_mean.square()
 
             if self.track_running_stats:
                 self.running_mean = (1 - exponential_average_factor) * self.running_mean + exponential_average_factor * di_mean
