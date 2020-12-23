@@ -452,6 +452,7 @@ class Solver(object):
                 self.final_bn = self.final_bn.to(dtype=torch.double)
             if isinstance(self.criterion, nn.Module):
                 self.criterion = self.criterion.to(dtype=torch.double)
+            self.optimizer = self.optimizer.to(dtype=torch.double)
         else:
             raise NotImplementedError
 
