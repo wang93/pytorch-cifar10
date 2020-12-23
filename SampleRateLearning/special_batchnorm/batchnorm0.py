@@ -70,7 +70,7 @@ class _BatchNorm(origin_BN):
             # y = (input - di_mean.view(new_size)) \
             #     / torch.full_like(di_var, 1e-2).max(di_var.sqrt()).view(new_size)
 
-            y = 1.4142 * (input - di_mean.view(new_size)) \
+            y = 0.7071 * (input - di_mean.view(new_size)) \
                 / torch.full_like(di_var, self.eps).add(di_var).sqrt().view(new_size)
 
         else:
@@ -79,7 +79,7 @@ class _BatchNorm(origin_BN):
 
             # y = (input - self.running_mean.view(new_size)) \
             #     / torch.full_like(self.running_var, 1e-2).max(self.running_var.sqrt()).view(new_size)
-            y = 1.4142 * (input - self.running_mean.view(new_size)) \
+            y = 0.7071 * (input - self.running_mean.view(new_size)) \
                 / torch.full_like(self.running_var, self.eps).add(self.running_var).sqrt().view(new_size)
 
         if self.affine:
