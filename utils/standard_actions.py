@@ -16,7 +16,7 @@ def _random_seed(seed):
     torch.cuda.manual_seed_all(seed)  # gpu
     np.random.seed(seed)  # numpy
     random.seed(seed)  # random and transforms
-    torch.backends.cudnn.deterministic = True  # cudnn
+    torch.backends.cudnn.deterministic = False  # cudnn
 
 
 def prepare_running(opt):

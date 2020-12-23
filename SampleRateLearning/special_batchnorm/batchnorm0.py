@@ -74,7 +74,7 @@ class _BatchNorm(origin_BN):
             # y = (input - self.expand(self.running_mean, sz)) \
             #     / self.expand(torch.sqrt(self.running_var + self.eps), sz)
             y = (input - self.running_mean.view(new_size)) \
-                / torch.full_like(self.running_var, 1e-2).max(self.running_var.sqrt()).view(new_size)
+                / (self.running_var + self.eps).sqrt().view(new_size)
 
         if self.affine:
             z = y * self.weight.view(new_size) + self.bias.view(new_size)
