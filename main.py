@@ -442,19 +442,21 @@ class Solver(object):
         print("Checkpoint saved to {}".format(model_out_path))
 
     def run(self):
+        if self.config.dtype == 'double':
+            torch.set_default_tensor_type(torch.DoubleTensor)
         self.load_data()
         self.load_model()
-        if self.config.dtype == 'float':
-            pass
-        elif self.config.dtype == 'double':
-            self.model = self.model.to(dtype=torch.double)
-            if self.final_bn is not None:
-                self.final_bn = self.final_bn.to(dtype=torch.double)
-            if isinstance(self.criterion, nn.Module):
-                self.criterion = self.criterion.to(dtype=torch.double)
-            self.optimizer = self.optimizer.to(dtype=torch.double)
-        else:
-            raise NotImplementedError
+        # if self.config.dtype == 'float':
+        #     pass
+        # elif self.config.dtype == 'double':
+        #     self.model = self.model.to(dtype=torch.double)
+        #     if self.final_bn is not None:
+        #         self.final_bn = self.final_bn.to(dtype=torch.double)
+        #     if isinstance(self.criterion, nn.Module):
+        #         self.criterion = self.criterion.to(dtype=torch.double)
+        #     self.optimizer = self.optimizer.to(dtype=torch.double)
+        # else:
+        #     raise NotImplementedError
 
 
         accuracy = 0
