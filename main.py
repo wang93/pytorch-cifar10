@@ -241,15 +241,6 @@ class Solver(object):
             from SampleRateLearning.special_batchnorm.batchnorm41 import BatchNorm1d as final_bn1d
             self.final_bn = nn.DataParallel(final_bn1d(base_momentum=self.config.final_bn)).cuda()
 
-        if self.config.dtype == 'float':
-            pass
-        elif self.config.dtype == 'double':
-            self.model = self.model.to(dtype=torch.double)
-            if self.final_bn is not None:
-                self.final_bn = self.final_bn.to(dtype=torch.double)
-        else:
-            raise NotImplementedError
-
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         elif self.config.optim == 'adamw':
@@ -443,9 +434,26 @@ class Solver(object):
     def run(self):
         self.load_data()
         self.load_model()
+        if self.config.dtype == 'float':
+            pass
+        elif self.config.dtype == 'double':
+            self.model = self.model.to(dtype=torch.double)
+            if self.final_bn is not None:
+                self.final_bn = self.final_bn.to(dtype=torch.double)
+            self.train_loader = self.train_loader.to(dtype=torch.double)
+            self.test_loader = self.test_loader.to(dtype=torch.double)
+            if self.val_loader is not None:
+                self.val_loader = self.val_loader.to(dtype=torch.double)
+            if isinstance(self.criterion, nn.Module):
+                self.criterion = self.criterion.to(dtype=torch.double)
+        else:
+            raise NotImplementedError
+
+
         accuracy = 0
         worst_precision = 0
         for epoch in range(1, self.epochs + 1):
+
             #self.scheduler.step(epoch)
             if self.config.srl_posrate_lr:
                 self.scheduler.step(self.criterion.pos_rate)
