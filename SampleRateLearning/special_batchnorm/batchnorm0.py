@@ -102,8 +102,8 @@ def convert_model(module):
             mod.running_mean = module.running_mean
             mod.running_var = module.running_var
             if module.affine:
-                mod.weight.data = module.weight.data.clone()
-                mod.bias.data = module.bias.data.clone()
+                mod.weight.data = module.weight.data
+                mod.bias.data = module.bias.data
 
     for name, child in module.named_children():
         mod.add_module(name, convert_model(child))
