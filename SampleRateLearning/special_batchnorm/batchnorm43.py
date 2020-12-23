@@ -1,7 +1,87 @@
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
+from torch.autograd import Function
+from torch.nn import functional as F
 
-'''reimplement BN in module but not function'''
+'''reimplement BN'''
+
+
+class batch_norm(Function):
+    """
+    We can implement our own custom autograd Functions by subclassing
+     torch.autograd.Function and implementing the forward and backward passes
+     which operate on Tensors.
+    """
+
+    @staticmethod
+    def forward(ctx, input, running_mean, running_var, weight=None, bias=None,
+                training=False, momentum=0.1, eps=1e-5):
+        sz = input.size()
+        if input.dim() == 4:
+            reduced_dim = (0, 2, 3)
+            new_size = [1, sz[1], 1, 1]
+        elif input.dim() == 2:
+            reduced_dim = (0,)
+            new_size = [1, sz[1]]
+        else:
+            raise NotImplementedError
+
+        input_d = input.detach().to(dtype=torch.double)
+        running_mean_d = running_mean.to(dtype=torch.double)
+        running_var_d = running_var.to(dtype=torch.double)
+        if weight is not None:
+            weight_d = weight.detach().to(dtype=torch.double)
+        if bias is not None:
+            bias_d = bias.detach().to(dtype=torch.double)
+
+        cur_var, cur_mean = torch.var_mean(input_d, dim=reduced_dim, keepdim=False, unbiased=False)
+        if training:
+            running_mean_d = (1-momentum) * running_mean_d + momentum * cur_mean
+            running_var_d = (1-momentum) * running_var_d + momentum * cur_var
+            running_mean.data = running_mean_d.to(torch.float)
+            running_var.data = running_var_d.to(torch.float)
+
+            y = (input_d - cur_mean.view(new_size))/(cur_var+eps).sqrt().view(new_size)
+            raise NotImplementedError
+
+
+
+        ctx.save_for_backward(scaling_factor, z)
+        # print(scaling_factor)
+        return z
+
+    @staticmethod
+    def backward(ctx, *grad_outputs):
+        # def backward(ctx, grad_z):
+        """
+     In the backward pass we receive the context object and a Tensor containing
+        the gradient of the loss with respect to the output produced during the
+        forward pass. We can retrieve cached data from the context object, and must
+        compute and return the gradient of the loss with respect to the input to the
+        forward function.
+     """
+        print('CS BP Once')
+
+        scaling_factor, z = ctx.saved_tensors
+        grad_z = grad_outputs[0]
+        grad_y = grad_z.data * scaling_factor.data
+
+        grad_alpha = grad_z.data * z.data
+        batchsize = grad_alpha.size(0)
+        # print('ddd')
+        # print(grad_alpha.size())
+        # print(batchsize)
+
+        grad_alpha = grad_alpha.sum(0).data
+        # grad_alpha = grad_alpha.mean(0).data
+        grad_alpha = grad_alpha.sum((1, 2), keepdim=True).data
+        grad_alpha = grad_alpha.data / float(batchsize)
+
+        # grad_alpha.fill_(2.5e-4)
+
+        # print(grad_alpha.mean())
+        # grad_alpha += 5e-6
+        return grad_alpha, grad_y
 
 
 class _BatchNorm(origin_BN):
@@ -46,20 +126,26 @@ class _BatchNorm(origin_BN):
             if input.dim() == 4:
                 reduced_dim = (0, 2, 3)
             elif input.dim() == 2:
-                reduced_dim = (0, )
+                reduced_dim = (0,)
             else:
                 raise NotImplementedError
 
-            data = input.detach()
+            data = input.detach().to(dtype=torch.double)
             # di_mean = torch.mean(data, dim=reduced_dim, keepdim=False)
             # di_var = torch.var(data, dim=reduced_dim, keepdim=False, unbiased=False)
             # di_var = torch.mean(data.square(), dim=reduced_dim, keepdim=False) - di_mean.square()
             di_var, di_mean = torch.var_mean(data, dim=reduced_dim, keepdim=False, unbiased=False)
 
+            di_var, di_mean = di_var.to(dtype=torch.float), di_mean.to(dtype=torch.float)
+
             if self.track_running_stats:
-                self.running_mean = (1. - exponential_average_factor) * self.running_mean + (exponential_average_factor * di_mean)
-                self.running_var = (1. - exponential_average_factor) * self.running_var + (exponential_average_factor * di_var)
+                self.running_mean = (1. - exponential_average_factor) * self.running_mean + (
+                            exponential_average_factor * di_mean).to(dtype=torch.float)
+                self.running_var = (1. - exponential_average_factor) * self.running_var + (
+                            exponential_average_factor * di_var).to(dtype=torch.float)
+                di_var, di_mean = di_var.to(dtype=torch.float), di_mean.to(dtype=torch.float)
             else:
+                di_var, di_mean = di_var.to(dtype=torch.float), di_mean.to(dtype=torch.float)
                 self.running_mean = di_mean
                 self.running_var = di_var
 

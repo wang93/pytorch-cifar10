@@ -30,6 +30,7 @@ def main():
                         type=str, help='sub sample ratio of each class')
     parser.add_argument('--exp', default='temp', type=str, help='experiment name')
     parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
+    parser.add_argument('--dtype', default='float', type=str, help='dtype of parameters and buffers')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
     parser.add_argument("--srl_alternate", action="store_true", help="sample rate learning in alternate mode or not.")
@@ -239,6 +240,15 @@ class Solver(object):
         if self.config.final_bn > 0.:
             from SampleRateLearning.special_batchnorm.batchnorm41 import BatchNorm1d as final_bn1d
             self.final_bn = nn.DataParallel(final_bn1d(base_momentum=self.config.final_bn)).cuda()
+
+        if self.config.dtype == 'float':
+            pass
+        elif self.config.dtype == 'double':
+            self.model = self.model.to(dtype=torch.double)
+            if self.final_bn is not None:
+                self.final_bn = self.final_bn.to(dtype=torch.double)
+        else:
+            raise NotImplementedError
 
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
