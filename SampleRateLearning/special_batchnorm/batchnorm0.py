@@ -50,11 +50,13 @@ class _BatchNorm(origin_BN):
             else:
                 raise NotImplementedError
 
-            data = input.data
+            data = input.detach().to(dtype=torch.double)
             # di_mean = torch.mean(data, dim=reduced_dim, keepdim=False)
             # di_var = torch.var(data, dim=reduced_dim, keepdim=False, unbiased=False)
             # di_var = torch.mean(data.square(), dim=reduced_dim, keepdim=False) - di_mean.square()
             di_var, di_mean = torch.var_mean(data, dim=reduced_dim, keepdim=False, unbiased=False)
+
+            di_var, di_mean = di_var.to(dtype=torch.float), di_mean.to(dtype=torch.float)
 
             if self.track_running_stats:
                 self.running_mean = (1. - exponential_average_factor) * self.running_mean + exponential_average_factor * di_mean
