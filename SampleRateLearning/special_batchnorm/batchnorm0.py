@@ -45,9 +45,10 @@ class _BatchNorm(origin_BN):
                 raise NotImplementedError
 
             data = input.data
-            di_mean = torch.mean(data, dim=reduced_dim, keepdim=False)
+            # di_mean = torch.mean(data, dim=reduced_dim, keepdim=False)
             # di_var = torch.var(data, dim=reduced_dim, keepdim=False, unbiased=False)
-            di_var = torch.mean(data.square(), dim=reduced_dim, keepdim=False) - di_mean.square()
+            # di_var = torch.mean(data.square(), dim=reduced_dim, keepdim=False) - di_mean.square()
+            di_var, di_mean = torch.var_mean(data, dim=reduced_dim, keepdim=False, unbiased=False)
 
             if self.track_running_stats:
                 self.running_mean = (1 - exponential_average_factor) * self.running_mean + exponential_average_factor * di_mean
