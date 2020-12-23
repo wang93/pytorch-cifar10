@@ -276,10 +276,13 @@ class Solver(object):
         global_step = (epoch - 1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
+            if self.config.dtype == 'double':
+                data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
             if self.config.srl_posrate_lr:
                 self.scheduler.step(self.criterion.pos_rate)
 
             if self.val_loader is not None:
+                raise NotImplementedError
                 val_data, val_target = self.val_loader.next()
                 data = torch.cat((data, val_data), dim=0)
                 target = torch.cat((target, val_target), dim=0)
@@ -322,6 +325,9 @@ class Solver(object):
         global_step = (epoch - 1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
+            if self.config.dtype == 'double':
+                data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
+
             if self.config.srl_posrate_lr:
                 self.scheduler.step(self.criterion.pos_rate)
 
@@ -388,6 +394,8 @@ class Solver(object):
 
         with torch.no_grad():
             for batch_num, (data, target) in enumerate(self.test_loader):
+                if self.config.dtype == 'double':
+                    data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
                 data, target = data.cuda(), target.cuda()
                 output = self.model(data)
                 if self.final_bn is not None:
@@ -440,10 +448,6 @@ class Solver(object):
             self.model = self.model.to(dtype=torch.double)
             if self.final_bn is not None:
                 self.final_bn = self.final_bn.to(dtype=torch.double)
-            self.train_loader = self.train_loader.to(dtype=torch.double)
-            self.test_loader = self.test_loader.to(dtype=torch.double)
-            if self.val_loader is not None:
-                self.val_loader = self.val_loader.to(dtype=torch.double)
             if isinstance(self.criterion, nn.Module):
                 self.criterion = self.criterion.to(dtype=torch.double)
         else:
