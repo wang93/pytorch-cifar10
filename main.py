@@ -340,6 +340,8 @@ class Solver(object):
                 self.final_bn.eval()
             self.criterion.train()
             val_data, val_target = self.val_loader.next()
+            if self.config.dtype == 'double':
+                val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
             val_data, val_target = val_data.cuda(), val_target.cuda()
             with torch.no_grad():
                 val_output = self.model(val_data)
