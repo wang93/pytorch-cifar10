@@ -27,6 +27,12 @@ class _BatchNorm(origin_BN):
         self._check_input_dim(input)
 
         sz = input.size()
+        if input.dim() == 4:
+            new_size = [1, sz[1], 1, 1]
+        elif input.dim() == 2:
+            new_size = [1, sz[1]]
+        else:
+            raise NotImplementedError
         if self.training:
             exponential_average_factor = 0.0
             if self.track_running_stats:
@@ -58,12 +64,17 @@ class _BatchNorm(origin_BN):
                 self.running_mean = di_mean
                 self.running_var = di_var
 
-            y = (input - self.expand(di_mean, sz)) \
-                / self.expand(torch.sqrt(self.eps + di_var), sz)
+            # y = (input - self.expand(di_mean, sz)) \
+            #     / self.expand(torch.sqrt(di_var + self.eps), sz)
+
+            y = (input - di_mean.view(new_size)) \
+                / torch.sqrt(di_var + self.eps).view(new_size)
 
         else:
-            y = (input - self.expand(self.running_mean, sz)) \
-                / self.expand(torch.sqrt(self.eps + self.running_var), sz)
+            # y = (input - self.expand(self.running_mean, sz)) \
+            #     / self.expand(torch.sqrt(self.running_var + self.eps), sz)
+            y = (input - self.running_mean.view(new_size)) \
+                / torch.sqrt(self.running_var + self.eps).view(new_size)
 
         if self.affine:
             z = y * self.expand(self.weight, sz) + self.expand(self.bias, sz)
