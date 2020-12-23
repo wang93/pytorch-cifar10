@@ -9,10 +9,12 @@ class _BatchNorm(origin_BN):
     def expand(stat, target_size):
         if len(target_size) == 4:
             #stat = stat.unsqueeze(1).unsqueeze(2).expand(target_size[1:])
-            stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).expand(target_size[0], -1, target_size[2], target_size[3])
+            #stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).expand(target_size[0], -1, target_size[2], target_size[3])
+            stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).repeat(target_size[0], 1, target_size[2],target_size[3])
         elif len(target_size) == 2:
             # pass
-            stat = stat.unsqueeze(0).expand(target_size[0], -1)
+            #stat = stat.unsqueeze(0).expand(target_size[0], -1)
+            stat = stat.unsqueeze(0).repeat(target_size[0], 1)
         else:
             raise NotImplementedError
 
