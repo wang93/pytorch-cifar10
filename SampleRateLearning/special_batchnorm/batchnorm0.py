@@ -9,12 +9,12 @@ class _BatchNorm(origin_BN):
     def expand(stat, target_size):
         if len(target_size) == 4:
             #stat = stat.unsqueeze(1).unsqueeze(2).expand(target_size[1:])
-            #stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).expand(target_size[0], -1, target_size[2], target_size[3])
-            stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).repeat(target_size[0], 1, target_size[2],target_size[3])
+            stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).expand(target_size[0], -1, target_size[2], target_size[3])
+            #stat = stat.unsqueeze(1).unsqueeze(2).unsqueeze(0).repeat(target_size[0], 1, target_size[2],target_size[3])
         elif len(target_size) == 2:
             # pass
-            #stat = stat.unsqueeze(0).expand(target_size[0], -1)
-            stat = stat.unsqueeze(0).repeat(target_size[0], 1)
+            stat = stat.unsqueeze(0).expand(target_size[0], -1)
+            #stat = stat.unsqueeze(0).repeat(target_size[0], 1)
         else:
             raise NotImplementedError
 
@@ -102,8 +102,8 @@ def convert_model(module):
             mod.running_mean = module.running_mean
             mod.running_var = module.running_var
             if module.affine:
-                mod.weight.data = module.weight.data.clone().detach()
-                mod.bias.data = module.bias.data.clone().detach()
+                mod.weight.data = module.weight.data.clone()
+                mod.bias.data = module.bias.data.clone()
 
     for name, child in module.named_children():
         mod.add_module(name, convert_model(child))
