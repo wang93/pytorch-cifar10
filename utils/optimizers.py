@@ -1,6 +1,6 @@
 import torch
 from torch.optim import Adam, AdamW
-from torch import functional as F
+from torch.optim import functional as F
 
 
 class SAdam(Adam):
