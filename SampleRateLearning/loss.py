@@ -14,10 +14,6 @@ class SRL_BCELoss(nn.Module):
         self.sampler = sampler
 
         self.alpha = nn.Parameter(torch.tensor(0.).cuda())
-        if pos_rate is None:
-            self.pos_rate = self.alpha.sigmoid()
-        else:
-            self.pos_rate = pos_rate
 
         self.sampler.update(self.pos_rate)
         self.norm = norm
@@ -72,6 +68,13 @@ class SRL_BCELoss(nn.Module):
             group.setdefault('initial_lr', group['lr'])
 
         self.optimizer = optimizer
+
+        self.train()
+        self.optimizer.zero_grad(set_to_none=True)
+        if pos_rate is None:
+            self.pos_rate = self.alpha.sigmoid()
+        else:
+            self.pos_rate = pos_rate
 
         self.train_losses = None
         self.val_losses = None
