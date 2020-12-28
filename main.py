@@ -340,11 +340,11 @@ class Solver(object):
             if self.final_bn is not None:
                 self.final_bn.eval()
             self.criterion.train()
+            # self.criterion.optimizer.zero_grad()
             val_data, val_target = self.val_loader.next()
             if self.config.dtype == 'double':
                 val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
             val_data, val_target = val_data.cuda(), val_target.cuda()
-            self.criterion.optimizer.zero_grad()
             with torch.no_grad():
                 val_output = self.model(val_data)
                 if self.final_bn is not None:

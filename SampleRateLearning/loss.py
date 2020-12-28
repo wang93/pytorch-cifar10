@@ -99,9 +99,9 @@ class SRL_BCELoss(nn.Module):
             # else:
             grad = (neg_loss - pos_loss).detach()
             if not torch.isnan(grad):
-                self.optimizer.zero_grad()
                 self.pos_rate.backward(grad)
                 self.optimizer.step()
+                self.optimizer.zero_grad()
                 self.pos_rate = self.alpha.sigmoid()
                 self.sampler.update(self.pos_rate)
 
