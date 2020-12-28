@@ -335,21 +335,6 @@ class Solver(object):
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
 
-            # srl
-            self.model.eval()
-            if self.final_bn is not None:
-                self.final_bn.eval()
-            self.criterion.train()
-            # self.criterion.optimizer.zero_grad()
-            val_data, val_target = self.val_loader.next()
-            if self.config.dtype == 'double':
-                val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
-            val_data, val_target = val_data.cuda(), val_target.cuda()
-            with torch.no_grad():
-                val_output = self.model(val_data)
-                if self.final_bn is not None:
-                    val_output = self.final_bn(val_output)
-            self.criterion(val_output, val_target)
 
             # optimize model params
             self.model.train()
@@ -370,6 +355,22 @@ class Solver(object):
 
             train_correct += np.sum(prediction[1].cpu().numpy()
                                     == target.cpu().numpy())  # train_correct incremented by one if predicted right
+
+            # srl
+            self.model.eval()
+            if self.final_bn is not None:
+                self.final_bn.eval()
+            self.criterion.train()
+            # self.criterion.optimizer.zero_grad()
+            val_data, val_target = self.val_loader.next()
+            if self.config.dtype == 'double':
+                val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
+            val_data, val_target = val_data.cuda(), val_target.cuda()
+            with torch.no_grad():
+                val_output = self.model(val_data)
+                if self.final_bn is not None:
+                    val_output = self.final_bn(val_output)
+            self.criterion(val_output, val_target)
 
             # record
             global_step += 1
