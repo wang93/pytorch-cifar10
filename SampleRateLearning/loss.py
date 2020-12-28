@@ -33,6 +33,14 @@ class SRL_BCELoss(nn.Module):
                              eps=1e-8,
                              amsgrad=False)
 
+        elif optim == 'sadam':
+            from utils.optimizers import SAdam
+            default = {'lr': lr, 'weight_decay': weight_decay}
+            optimizer = SAdam(param_groups, **default,
+                              betas=(0., 0.999),
+                              eps=1e-8,
+                              amsgrad=False)
+
         elif optim == 'amsgrad':
             default = {'lr': lr, 'weight_decay': weight_decay}
             optimizer = Adam(param_groups, **default,
