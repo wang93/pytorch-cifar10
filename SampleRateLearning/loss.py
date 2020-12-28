@@ -15,7 +15,6 @@ class SRL_BCELoss(nn.Module):
 
         self.alpha = nn.Parameter(torch.tensor(0.).cuda())
 
-        self.sampler.update(self.pos_rate)
         self.norm = norm
         self.in_train = in_train
 
@@ -75,6 +74,8 @@ class SRL_BCELoss(nn.Module):
             self.pos_rate = self.alpha.sigmoid()
         else:
             self.pos_rate = pos_rate
+
+        self.sampler.update(self.pos_rate)
 
         self.train_losses = None
         self.val_losses = None
