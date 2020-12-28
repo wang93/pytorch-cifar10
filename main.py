@@ -286,6 +286,7 @@ class Solver(object):
                 val_data, val_target = self.val_loader.next()
                 data = torch.cat((data, val_data), dim=0)
                 target = torch.cat((target, val_target), dim=0)
+                self.criterion.optimizer.zero_grad()
 
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
@@ -343,6 +344,7 @@ class Solver(object):
             if self.config.dtype == 'double':
                 val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
             val_data, val_target = val_data.cuda(), val_target.cuda()
+            self.criterion.optimizer.zero_grad()
             with torch.no_grad():
                 val_output = self.model(val_data)
                 if self.final_bn is not None:
