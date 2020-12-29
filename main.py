@@ -99,7 +99,7 @@ class Solver(object):
             raise NotImplementedError
 
     @staticmethod
-    def _sub_data(dataset, classes, ratios=None, val_ratio=0.):
+    def _sub_data(dataset, classes, test_trans, ratios=None, val_ratio=0.):
         chosen_indices = []
         if ratios is None:
             ratios = [1., ] * len(classes)
@@ -134,6 +134,7 @@ class Solver(object):
 
         train_set = dataset
         val_set = deepcopy(dataset)
+        val_set.transform = test_trans
 
         train_set.data = train_set.data[train_indices]
         train_set.targets = [train_set.targets[i] for i in train_indices]
@@ -153,7 +154,7 @@ class Solver(object):
         test_transform = transforms.Compose([transforms.ToTensor(), normalize])
 
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
-        train_set, val_set = self._sub_data(train_set, self.classes, self.ratios, self.val_ratio)
+        train_set, val_set = self._sub_data(train_set, self.classes, test_transform, self.ratios, self.val_ratio)
 
         if val_set is not None:
             from SampleRateLearning.sampler import ValidationBatchSampler
