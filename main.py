@@ -189,7 +189,7 @@ class Solver(object):
             self.criterion = nn.CrossEntropyLoss().cuda()
 
         test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
-        self._sub_data(test_set, self.classes)
+        self._sub_data(test_set, self.classes, test_transform)
         self.test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=self.test_batch_size, shuffle=False)
 
     def load_model(self):
