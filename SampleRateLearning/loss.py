@@ -110,6 +110,7 @@ class SRL_BCELoss(nn.Module):
             #
             # else:
             grad = (neg_loss - pos_loss).detach()
+            grad = torch.clamp(grad, min=-5., max=5.)
             if not torch.isnan(grad):
                 self.pos_rate.backward(grad)
                 self.optimizer.step()
