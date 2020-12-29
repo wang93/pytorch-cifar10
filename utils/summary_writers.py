@@ -7,7 +7,7 @@
 SummaryWriters
 """
 
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 import torch
 from os.path import join as pjoin
 from SampleRateLearning.loss import SRL_BCELoss
