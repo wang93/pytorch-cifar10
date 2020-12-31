@@ -8,7 +8,7 @@ BN with training=False on val set"""
 
 import torch
 from torch.nn.modules.batchnorm import _BatchNorm as origin_BN
-from SampleRateLearning.special_batchnorm import global_variables as batch_labels
+from SampleRateLearning import global_variables as batch_labels
 
 
 class _BatchNorm(origin_BN):

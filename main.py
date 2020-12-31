@@ -11,7 +11,7 @@ from importlib import import_module
 import random
 from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
-from SampleRateLearning.special_batchnorm import global_variables
+from SampleRateLearning import global_variables
 from copy import deepcopy
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -198,6 +198,12 @@ class Solver(object):
         self.test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=self.test_batch_size, shuffle=False)
 
     def load_model(self):
+        targets = self.train_loader.dataset.targets
+        classes = list(set(targets))
+        nums = [0 for _ in range(len(classes))]
+        for t in targets:
+            nums[t] += 1
+
         model_factory = {
             'lenet': LeNet,
             'gap': GAP,
