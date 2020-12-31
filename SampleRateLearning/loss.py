@@ -151,8 +151,8 @@ class SRL_BCELoss(nn.Module):
         is_pos = labels.type(torch.bool)
         scores = scores.sigmoid()
         if self.soft_precision and self.alternate and self.training:
-            losses = scores
-            #losses = (scores > 0.5).to(dtype=torch.float)
+            # losses = scores
+            losses = (scores > 0.5).to(dtype=torch.float)
             losses[is_pos] = 1. - losses[is_pos]
         else:
             losses = nn.BCELoss(reduction='none')(scores, labels)
@@ -165,8 +165,8 @@ class SRL_CELoss(SRL_BCELoss):
         is_pos = labels.type(torch.bool)
         if self.soft_precision and self.alternate and self.training:
             scores = torch.nn.functional.softmax(scores, dim=1)
-            losses = scores[:, 1].view(-1)
-            # losses = (scores[:, 1].view(-1) > 0.5).to(dtype=torch.float)
+            # losses = scores[:, 1].view(-1)
+            losses = (scores[:, 1].view(-1) > 0.5).to(dtype=torch.float)
             losses[is_pos] = 1. - losses[is_pos]
         else:
             losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
