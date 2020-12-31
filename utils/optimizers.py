@@ -72,6 +72,7 @@ class SAdam(Adam):
                    )
         return loss
 
+
 class AdamMW(AdamW):
     def __init__(self, params, lr=1e-3, betas=(0.99, 0.99), eps=1e-8,
                  weight_decay=1e-2, amsgrad=False):
