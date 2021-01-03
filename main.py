@@ -176,7 +176,7 @@ class Solver(object):
             elif self.config.equal_gradient:
                 from SampleRateLearning.equal_gradient_loss import Equal_Gradient_SRL_CELoss as SRL_LOSS
             else:
-                from SampleRateLearning.loss import SRL_CELoss as SRL_LOSS
+                from SampleRateLearning.loss2 import SRL_CELoss as SRL_LOSS
 
             self.criterion = SRL_LOSS(sampler=batch_sampler,
                                       optim=self.config.srl_optim,
