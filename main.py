@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--srl_weight', action="store_true", help="srl with equal gradient")
     parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
     parser.add_argument("--srl_soft_precision", '-ssp', action="store_true", help="srl according to soft precision")
-    parser.add_argument("--srl_two_phases", '-stp', action="store_true",
+    parser.add_argument("--srl_two_phases", '-s2p', action="store_true",
                         help="srl with decoupling representation and classifier")
     parser.add_argument("--srl_posrate_lr", '-spl', action="store_true",
                         help="the lr of model is multiplied by min(posrate, 1-posrate)")
