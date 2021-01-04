@@ -49,9 +49,15 @@ class _HalfQueue(object):
         self.recent.put(new_element)
 
     def select(self, num):
-        res = randsample(self.selection_pool, num)
-        for e in res:
+        res = []
+        for i in range(num):
+            e = randsample(self.selection_pool, 1)[0]
+            res.append(e)
             self._update(e)
+
+        # res = randsample(self.selection_pool, num)
+        # for e in res:
+        #     self._update(e)
 
         return res
 
@@ -66,24 +72,36 @@ class SampleRateBatchSampler(SampleRateSampler):
         self.sample_agents = [_HalfQueue(sub_indices, batch_size) for sub_indices in indices]
         self.length = (self.sample_num_per_epoch + self.batch_size - 1) // self.batch_size
 
+        total_indices = []
+        for idxs in indices:
+            total_indices.extend(idxs)
+
+        self.instance_wise_sample_agent = _HalfQueue(total_indices, len(total_indices)-1)
+        self.cur_phase = 2
+
     def __next__(self):
         self.cur_idx += 1
         if self.cur_idx >= self.length:
             raise StopIteration
 
-        # b_num = binomial(self.batch_size, self.pos_rate)
+        if self.cur_phase == 1:
+            batch = self.instance_wise_sample_agent.select(self.batch_size)
 
-        b_num = round(self.batch_size * self.pos_rate)
-        b_num = int(clip(b_num, 1, self.batch_size-1))
+        elif self.cur_phase == 2:
+            # b_num = binomial(self.batch_size, self.pos_rate)
+            b_num = round(self.batch_size * self.pos_rate)
+            b_num = int(clip(b_num, 1, self.batch_size-1))
+            # b_num = round(self.batch_size * 0.5)
 
-        # b_num = round(self.batch_size * 0.5)
+            # float_b_num = self.batch_size * self.pos_rate
+            # b_num = int(float_b_num)
+            # if (float_b_num % 1) > 0:
+            #     b_num += (float_b_num % 1) > random()
+            a_num = self.batch_size - b_num
+            batch = self.sample_agents[0].select(a_num) + self.sample_agents[1].select(b_num)
 
-        # float_b_num = self.batch_size * self.pos_rate
-        # b_num = int(float_b_num)
-        # if (float_b_num % 1) > 0:
-        #     b_num += (float_b_num % 1) > random()
-        a_num = self.batch_size - b_num
-        batch = self.sample_agents[0].select(a_num) + self.sample_agents[1].select(b_num)
+        else:
+            raise NotImplementedError
 
         return batch
 

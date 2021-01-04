@@ -11,6 +11,7 @@ class SRL_BCELoss(nn.Module):
             raise TypeError
 
         super(SRL_BCELoss, self).__init__()
+
         self.sampler = sampler
 
         self.alpha = nn.Parameter(torch.tensor(0.).cuda())
@@ -89,6 +90,13 @@ class SRL_BCELoss(nn.Module):
 
         self.initial = True
 
+        self.cur_phase = 2
+
+    def __setattr__(self, key, value):
+        super(SRL_BCELoss, self).__setattr__(key, value)
+        if key == 'cur_phase':
+            self.sampler.cur_phase = value
+
     def forward2(self, scores, labels: torch.Tensor):
 
         losses, is_pos = self.get_losses(scores, labels)
@@ -100,7 +108,7 @@ class SRL_BCELoss(nn.Module):
         loss = losses.mean()
 
         # adjust pos_rate
-        if isinstance(self.pos_rate, torch.Tensor):
+        if isinstance(self.pos_rate, torch.Tensor) and self.cur_phase == 2:
             # if self.initial:
             #     self.initial = False
             #     pos_rate = (pos_loss / (pos_loss + neg_loss)).detach()

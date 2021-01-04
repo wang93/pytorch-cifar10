@@ -13,6 +13,7 @@ from utils.standard_actions import prepare_running
 from utils.summary_writers import SummaryWriters
 from SampleRateLearning import global_variables
 from copy import deepcopy
+from utils.lr_strategy_generator import MileStoneLR_WarmUp
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -40,6 +41,8 @@ def main():
     parser.add_argument('--srl_weight', action="store_true", help="srl with equal gradient")
     parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
     parser.add_argument("--srl_soft_precision", '-ssp', action="store_true", help="srl according to soft precision")
+    parser.add_argument("--srl_two_phases", '-stp', action="store_true",
+                        help="srl with decoupling representation and classifier")
     parser.add_argument("--srl_posrate_lr", '-spl', action="store_true",
                         help="the lr of model is multiplied by min(posrate, 1-posrate)")
     parser.add_argument("--equal_gradient", '-eg', action="store_true", help="using equal-gradient loss")
@@ -60,6 +63,8 @@ def main():
 
     if not args.srl:
         args.srl_alternate = False
+        args.srl_in_train = False
+        args.srl_two_phase = False
 
     prepare_running(args)
     solver = Solver(args)
@@ -268,7 +273,6 @@ class Solver(object):
             from SampleRateLearning.lr_strategy_generator import PosRateLR
             self.scheduler = PosRateLR(self.optimizer)
         else:
-            from utils.lr_strategy_generator import MileStoneLR_WarmUp
             self.scheduler = MileStoneLR_WarmUp(self.optimizer,
                                                 milestones=[75, 150],
                                                 gamma=0.5,
@@ -474,31 +478,93 @@ class Solver(object):
         # else:
         #     raise NotImplementedError
 
+        if not self.config.srl_two_phases:
+            accuracy = 0
+            worst_precision = 0
+            for epoch in range(1, self.epochs + 1):
+                #self.scheduler.step(epoch)
+                if self.config.srl_posrate_lr:
+                    self.scheduler.step(self.criterion.pos_rate)
+                else:
+                    self.scheduler.step(epoch)
+                if self.srl and self.srl_lr < 0:
+                    cur_lr = self.optimizer.param_groups[0]['lr']
+                    self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
+                print("\n===> epoch: %d/200" % epoch)
+                if self.config.srl_alternate:
+                    self.train2(epoch)
+                else:
+                    self.train(epoch)
+                test_result = self.test(epoch)
+                accuracy = max(accuracy, test_result[1])
+                worst_precision = max(worst_precision, test_result[2])
+                if epoch == self.epochs:
+                    print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
+                    print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
+                    self.save()
 
-        accuracy = 0
-        worst_precision = 0
-        for epoch in range(1, self.epochs + 1):
-
-            #self.scheduler.step(epoch)
+        else:
             if self.config.srl_posrate_lr:
-                self.scheduler.step(self.criterion.pos_rate)
-            else:
+                raise NotImplementedError
+
+            if not self.config.srl_alternate:
+                raise NotImplementedError
+
+            # phase 1
+            self.criterion.cur_phase = 1
+            accuracy = 0
+            worst_precision = 0
+            for epoch in range(1, self.epochs + 1):
                 self.scheduler.step(epoch)
-            if self.srl and self.srl_lr < 0:
-                cur_lr = self.optimizer.param_groups[0]['lr']
-                self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
-            print("\n===> epoch: %d/200" % epoch)
-            if self.config.srl_alternate:
+                print("\n===>phase-1, epoch: %d/200" % epoch)
                 self.train2(epoch)
+                test_result = self.test(epoch)
+                accuracy = max(accuracy, test_result[1])
+                worst_precision = max(worst_precision, test_result[2])
+                if epoch == self.epochs:
+                    print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
+                    print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
+                    self.save()
+
+            # phase 2
+            self.criterion.cur_phase = 2
+            final_fc = self.model.module.final_fc
+            if self.config.final_zero:
+                final_fc.weight.data = torch.zeros_like(final_fc.weight.data)
+                if final_fc.bias is not None:
+                    final_fc.bias.data = torch.zeros_like(final_fc.bias.data)
             else:
-                self.train(epoch)
-            test_result = self.test(epoch)
-            accuracy = max(accuracy, test_result[1])
-            worst_precision = max(worst_precision, test_result[2])
-            if epoch == self.epochs:
-                print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
-                print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
-                self.save()
+                final_fc.reset_parameters()
+
+            if self.config.optim == 'adam':
+                self.optimizer = optim.Adam(final_fc.parameters(), lr=self.lr)
+            elif self.config.optim == 'adamw':
+                self.optimizer = optim.AdamW(final_fc.parameters(), lr=self.lr, weight_decay=0.)
+            elif self.config.optim == 'adammw':
+                from utils.optimizers import AdamMW
+                self.optimizer = AdamMW(final_fc.parameters(), lr=self.lr, weight_decay=0.)
+            else:
+                raise NotImplementedError
+
+            self.scheduler = MileStoneLR_WarmUp(self.optimizer,
+                                                milestones=[75, 150],
+                                                gamma=0.5,
+                                                warmup_till=self.config.warmup_till,
+                                                warmup_mode=self.config.warmup_mode)
+
+            accuracy = 0
+            worst_precision = 0
+            for epoch in range(self.epochs + 1, self.epochs * 2 + 1):
+                self.scheduler.step(epoch - self.epochs)
+                print("\n===>phase-1, epoch: %d/200" % epoch)
+                self.train2(epoch)
+                test_result = self.test(epoch)
+                accuracy = max(accuracy, test_result[1])
+                worst_precision = max(worst_precision, test_result[2])
+                if epoch == self.epochs:
+                    print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
+                    print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
+                    self.save()
 
 
 if __name__ == '__main__':
