@@ -479,6 +479,7 @@ class Solver(object):
         #     raise NotImplementedError
 
         if not self.config.srl_two_phases:
+            self.criterion.cur_phase = 2
             accuracy = 0
             worst_precision = 0
             for epoch in range(1, self.epochs + 1):
