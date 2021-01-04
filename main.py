@@ -530,7 +530,8 @@ class Solver(object):
             # phase 2
             self.criterion.cur_phase = 2
             final_fc = self.model.module.final_fc
-            if self.config.final_zero:
+            #if self.config.final_zero:
+            if True:
                 final_fc.weight.data = torch.zeros_like(final_fc.weight.data)
                 if final_fc.bias is not None:
                     final_fc.bias.data = torch.zeros_like(final_fc.bias.data)
