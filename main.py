@@ -490,7 +490,7 @@ class Solver(object):
                 if self.srl and self.srl_lr < 0:
                     cur_lr = self.optimizer.param_groups[0]['lr']
                     self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
-                print("\n===> epoch: %d/200" % epoch)
+                print("\n===> epoch: {0}/{1}".format(epoch, self.epochs))
                 if self.config.srl_alternate:
                     self.train2(epoch)
                 else:
@@ -516,7 +516,7 @@ class Solver(object):
             worst_precision = 0
             for epoch in range(1, self.epochs + 1):
                 self.scheduler.step(epoch)
-                print("\n===>phase-1, epoch: %d/200" % epoch)
+                print("\n===>phase-1, epoch: {0}/{1}".format(epoch, self.epochs))
                 self.train2(epoch)
                 test_result = self.test(epoch)
                 accuracy = max(accuracy, test_result[1])
@@ -556,7 +556,7 @@ class Solver(object):
             worst_precision = 0
             for epoch in range(self.epochs + 1, self.epochs * 2 + 1):
                 self.scheduler.step(epoch - self.epochs)
-                print("\n===>phase-2, epoch: %d/200" % epoch)
+                print("\n===>phase-2, epoch: {0}/{1}".format(epoch - self.epochs, self.epochs))
                 self.train2(epoch)
                 test_result = self.test(epoch)
                 accuracy = max(accuracy, test_result[1])
