@@ -556,7 +556,7 @@ class Solver(object):
             worst_precision = 0
             for epoch in range(self.epochs + 1, self.epochs * 2 + 1):
                 self.scheduler.step(epoch - self.epochs)
-                print("\n===>phase-1, epoch: %d/200" % epoch)
+                print("\n===>phase-2, epoch: %d/200" % epoch)
                 self.train2(epoch)
                 test_result = self.test(epoch)
                 accuracy = max(accuracy, test_result[1])
