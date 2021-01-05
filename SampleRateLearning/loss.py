@@ -77,8 +77,8 @@ class SRL_BCELoss(nn.Module):
 
         self.optimizer = optimizer
 
-        # self.optimizer.zero_grad(set_to_none=True)
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none=True)
+        # self.optimizer.zero_grad()
         if pos_rate is None:
             self.pos_rate = self.alpha.sigmoid()
         else:
@@ -122,8 +122,8 @@ class SRL_BCELoss(nn.Module):
             if not torch.isnan(grad):
                 self.pos_rate.backward(grad)
                 self.optimizer.step()
-                # self.optimizer.zero_grad(set_to_none=True)
-                self.optimizer.zero_grad()
+                self.optimizer.zero_grad(set_to_none=True)
+                # self.optimizer.zero_grad()
                 self.pos_rate = self.alpha.sigmoid()
                 self.sampler.update(self.pos_rate)
 
