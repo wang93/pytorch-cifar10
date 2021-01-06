@@ -62,6 +62,13 @@ class SRL_BCELoss(nn.Module):
                                 alpha=0.999,
                                 eps=1e-8)
 
+        elif optim == 'rmsprop2':
+            from utils.optimizers import RMSprop2
+            default = {'lr': lr, 'weight_decay': weight_decay}
+            optimizer = RMSprop2(param_groups, **default,
+                                 alpha=0.999,
+                                 eps=1e-8)
+
         elif optim == 'adammw':
             from utils.optimizers import AdamMW
             default = {'lr': lr, 'weight_decay': weight_decay}
