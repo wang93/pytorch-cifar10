@@ -14,6 +14,7 @@ from utils.summary_writers import SummaryWriters
 from SampleRateLearning import global_variables
 from copy import deepcopy
 from utils.lr_strategy_generator import MileStoneLR_WarmUp
+import math
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -39,6 +40,7 @@ def main():
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
     parser.add_argument('--srl_norm', action="store_true", help="use normed srl")
     parser.add_argument('--srl_weight', action="store_true", help="srl with equal gradient")
+    parser.add_argument('--srl_infer_init', '-sii', action="store_true", help="srl with inferenced initial alpha")
     parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
     parser.add_argument("--srl_soft_precision", '-ssp', action="store_true", help="srl according to soft precision")
     parser.add_argument("--srl_two_phases", '-s2p', action="store_true",
@@ -183,6 +185,16 @@ class Solver(object):
             else:
                 from SampleRateLearning.loss import SRL_CELoss as SRL_LOSS
 
+            if self.config.srl_infer_init:
+                nums = [0, 0]
+                for t in train_set.targets:
+                    nums[t] += 1
+
+                alpha = math.log(float(nums[1])/float(nums[0]))
+
+            else:
+                alpha = None
+
             self.criterion = SRL_LOSS(sampler=batch_sampler,
                                       optim=self.config.srl_optim,
                                       lr=max(self.srl_lr, 0),
@@ -191,6 +203,7 @@ class Solver(object):
                                       norm=self.config.srl_norm,
                                       alternate=self.config.srl_alternate,
                                       soft_precision=self.config.srl_soft_precision,
+                                      alpha=alpha
                                       ).cuda()
 
         else:

@@ -6,7 +6,7 @@ from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 class SRL_BCELoss(nn.Module):
     def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
-                 norm=False, pos_rate=None, in_train=True, alternate=False, soft_precision=False):
+                 norm=False, pos_rate=None, in_train=True, alternate=False, soft_precision=False, alpha=None):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
@@ -14,7 +14,10 @@ class SRL_BCELoss(nn.Module):
 
         self.sampler = sampler
 
-        self.alpha = nn.Parameter(torch.tensor(0.).cuda())
+        if alpha is None:
+            self.alpha = nn.Parameter(torch.tensor(0.).cuda())
+        else:
+            self.alpha = nn.Parameter(torch.tensor(float(alpha)).cuda())
 
         self.norm = norm
         self.in_train = in_train
