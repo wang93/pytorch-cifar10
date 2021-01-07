@@ -42,7 +42,7 @@ class _HalfQueue(object):
     def _update(self, new_element):
         self.selection_pool.remove(new_element)
 
-        if self.recent.full():
+        if self.recent.full() or len(self.selection_pool) == 0:
             old_element = self.recent.get()
             self.selection_pool.add(old_element)
 
@@ -124,7 +124,7 @@ class ValidationBatchSampler(Sampler):
         if self.batch_size % num_classes != 0:
             raise ValueError
         self.num = self.batch_size // num_classes
-        self.sample_agents = [_HalfQueue(sub_indices, self.num-1) for sub_indices in c2i]
+        self.sample_agents = [_HalfQueue(sub_indices, self.num) for sub_indices in c2i]
 
     def __next__(self):
         batch = []
