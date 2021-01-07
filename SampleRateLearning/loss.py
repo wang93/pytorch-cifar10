@@ -90,7 +90,8 @@ class SRL_BCELoss(nn.Module):
         self.optimizer.zero_grad(set_to_none=True)
         # self.optimizer.zero_grad()
         if pos_rate is None:
-            self.pos_rate = self.alpha.sigmoid()
+            # self.pos_rate = self.alpha.sigmoid()
+            self.pos_rate = self.alpha * 0.25
         else:
             self.pos_rate = pos_rate
 
@@ -134,7 +135,8 @@ class SRL_BCELoss(nn.Module):
                 self.optimizer.step()
                 self.optimizer.zero_grad(set_to_none=True)
                 # self.optimizer.zero_grad()
-                self.pos_rate = self.alpha.sigmoid()
+                # self.pos_rate = self.alpha.sigmoid()
+                self.pos_rate = self.alpha * 0.25
                 self.sampler.update(self.pos_rate)
 
         return loss
