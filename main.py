@@ -131,17 +131,31 @@ class Solver(object):
         if val_ratio <= 0.:
             return dataset, None
 
+        indices = []
+        nums = []
+        for c in range(len(dataset.classes)):
+            indices.append([i for i, l in enumerate(dataset.targets) if l == c])
+            num = len(indices[-1])
+            nums.append(num)
+
+        sub_num = round(float(min(nums)) * val_ratio)
         train_indices = []
         val_indices = []
 
-        for c in range(len(dataset.classes)):
-            indices = [i for i, l in enumerate(dataset.targets) if l == c]
-            num = len(indices)
-            sub_num = round(num * val_ratio)
-            v_indices = random.sample(indices, sub_num)
-            t_indices = list(set(indices) - set(v_indices))
+        for idxs in indices:
+            v_indices = random.sample(idxs, sub_num)
+            t_indices = list(set(idxs) - set(v_indices))
             val_indices.extend(v_indices)
             train_indices.extend(t_indices)
+            
+        # for c in range(len(dataset.classes)):
+        #     indices = [i for i, l in enumerate(dataset.targets) if l == c]
+        #     num = len(indices)
+        #     sub_num = round(num * val_ratio)
+        #     v_indices = random.sample(indices, sub_num)
+        #     t_indices = list(set(indices) - set(v_indices))
+        #     val_indices.extend(v_indices)
+        #     train_indices.extend(t_indices)
 
         train_set = dataset
         val_set = deepcopy(dataset)
