@@ -119,11 +119,12 @@ class ValidationBatchSampler(Sampler):
         for i, t in enumerate(data_source.targets):
             c2i[t].append(i)
         data_source.class_to_indices = c2i
-        self.sample_agents = [_HalfQueue(sub_indices, batch_size) for sub_indices in c2i]
+
         num_classes = len(c2i)
         if self.batch_size % num_classes != 0:
             raise ValueError
         self.num = self.batch_size // num_classes
+        self.sample_agents = [_HalfQueue(sub_indices, self.num) for sub_indices in c2i]
 
     def __next__(self):
         batch = []
