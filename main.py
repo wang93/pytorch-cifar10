@@ -351,19 +351,6 @@ class Solver(object):
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
 
-            # optimize model params
-            self.model.train()
-            if self.final_bn is not None:
-                self.final_bn.train()
-            self.criterion.eval()
-            self.optimizer.zero_grad()
-            output = self.model(data)
-            if self.final_bn is not None:
-                output = self.final_bn(output)
-            loss = self.criterion(output, target)
-            loss.backward()
-            self.optimizer.step()
-
             # srl
             self.model.eval()
             if self.final_bn is not None:
@@ -380,6 +367,18 @@ class Solver(object):
                     val_output = self.final_bn(val_output)
             self.criterion(val_output, val_target)
 
+            # optimize model params
+            self.model.train()
+            if self.final_bn is not None:
+                self.final_bn.train()
+            self.criterion.eval()
+            self.optimizer.zero_grad()
+            output = self.model(data)
+            if self.final_bn is not None:
+                output = self.final_bn(output)
+            loss = self.criterion(output, target)
+            loss.backward()
+            self.optimizer.step()
 
             train_loss += loss.item()
             prediction = torch.max(output, 1)  # second param "1" represents the dimension to be reduced
