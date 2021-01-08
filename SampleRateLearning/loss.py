@@ -117,7 +117,8 @@ class SRL_BCELoss(nn.Module):
         neg_loss = losses[~is_pos].mean()
         self.val_losses = [neg_loss, pos_loss]
 
-        loss = losses.mean()
+        #loss = losses.mean()
+        loss = pos_loss * self.pos_rate + neg_loss * (1. - self.pos_rate)
 
         # adjust pos_rate
         if isinstance(self.pos_rate, torch.Tensor) and self.cur_phase == 2:
