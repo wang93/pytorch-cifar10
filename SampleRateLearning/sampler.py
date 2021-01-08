@@ -5,7 +5,6 @@ from torch.utils.data.sampler import Sampler
 
 from queue import Queue
 from random import sample as randsample
-from random import random
 
 
 class SampleRateSampler(Sampler):

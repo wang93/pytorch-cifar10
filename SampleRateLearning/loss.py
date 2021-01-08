@@ -115,7 +115,7 @@ class SRL_BCELoss(nn.Module):
         loss = losses.mean()
 
         # adjust pos_rate
-        if isinstance(self.pos_rate, torch.Tensor) and self.cur_phase == 2:
+        if isinstance(self.pos_rate, torch.Tensor):
 
             grad = (neg_loss - pos_loss).detach()
             if not torch.isnan(grad):
