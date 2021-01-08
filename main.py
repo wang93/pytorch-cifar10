@@ -38,16 +38,16 @@ def main():
     parser.add_argument("--srl_alternate", action="store_true", help="sample rate learning in alternate mode or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
-    parser.add_argument('--srl_norm', action="store_true", help="use normed srl")
-    parser.add_argument('--srl_weight', action="store_true", help="srl with equal gradient")
-    parser.add_argument('--srl_infer_init', '-sii', action="store_true", help="srl with inferenced initial alpha")
+    # parser.add_argument('--srl_norm', action="store_true", help="use normed srl")
+    # parser.add_argument('--srl_weight', action="store_true", help="srl with equal gradient")
+    # parser.add_argument('--srl_infer_init', '-sii', action="store_true", help="srl with inferenced initial alpha")
     parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
     parser.add_argument("--srl_soft_precision", '-ssp', action="store_true", help="srl according to soft precision")
-    parser.add_argument("--srl_two_phases", '-s2p', action="store_true",
-                        help="srl with decoupling representation and classifier")
-    parser.add_argument("--srl_posrate_lr", '-spl', action="store_true",
-                        help="the lr of model is multiplied by min(posrate, 1-posrate)")
-    parser.add_argument("--equal_gradient", '-eg', action="store_true", help="using equal-gradient loss")
+    # parser.add_argument("--srl_two_phases", '-s2p', action="store_true",
+    #                     help="srl with decoupling representation and classifier")
+    # parser.add_argument("--srl_posrate_lr", '-spl', action="store_true",
+    #                     help="the lr of model is multiplied by min(posrate, 1-posrate)")
+    # parser.add_argument("--equal_gradient", '-eg', action="store_true", help="using equal-gradient loss")
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
@@ -55,7 +55,6 @@ def main():
     parser.add_argument('--warmup_till', '-wt', default=1, type=int, help='version of stable bn')
     parser.add_argument('--warmup_mode', '-wm', default='const', type=str, help='version of stable bn')
     parser.add_argument("--weight_center", '-wc', action="store_true", help="centralize all the weights")
-    # parser.add_argument("--final_bn", action="store_true", help="bn after the final layer")
     parser.add_argument("--final_bn", default=-1., type=float, help='momentum of final bn')
     parser.add_argument("--final_zero", action="store_true", help="set params in the final layer to zero")
     args = parser.parse_args()
@@ -66,7 +65,6 @@ def main():
     if not args.srl:
         args.srl_alternate = False
         args.srl_in_train = False
-        args.srl_two_phase = False
 
     prepare_running(args)
     solver = Solver(args)
@@ -175,35 +173,19 @@ class Solver(object):
 
         if self.srl:
             from SampleRateLearning.sampler import SampleRateBatchSampler
+            from SampleRateLearning.loss import SRL_CELoss as SRL_LOSS
+
             batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.train_batch_size)
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_sampler=batch_sampler)
-
-            if self.config.srl_weight:
-                from SampleRateLearning.loss import SRWL_CELoss as SRL_LOSS
-            elif self.config.equal_gradient:
-                from SampleRateLearning.equal_gradient_loss import Equal_Gradient_SRL_CELoss as SRL_LOSS
-            else:
-                from SampleRateLearning.loss import SRL_CELoss as SRL_LOSS
-
-            if self.config.srl_infer_init:
-                nums = [0, 0]
-                for t in train_set.targets:
-                    nums[t] += 1
-
-                alpha = math.log(float(nums[1])/float(nums[0]))
-
-            else:
-                alpha = None
 
             self.criterion = SRL_LOSS(sampler=batch_sampler,
                                       optim=self.config.srl_optim,
                                       lr=max(self.srl_lr, 0),
                                       pos_rate=self.config.pos_rate,
                                       in_train=self.config.srl_in_train,
-                                      norm=self.config.srl_norm,
                                       alternate=self.config.srl_alternate,
                                       soft_precision=self.config.srl_soft_precision,
-                                      alpha=alpha
+                                      alpha=None
                                       ).cuda()
 
         else:
@@ -281,16 +263,11 @@ class Solver(object):
         else:
             raise NotImplementedError
 
-        # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-        if self.config.srl_posrate_lr:
-            from SampleRateLearning.lr_strategy_generator import PosRateLR
-            self.scheduler = PosRateLR(self.optimizer)
-        else:
-            self.scheduler = MileStoneLR_WarmUp(self.optimizer,
-                                                milestones=[75, 150],
-                                                gamma=0.5,
-                                                warmup_till=self.config.warmup_till,
-                                                warmup_mode=self.config.warmup_mode)
+        self.scheduler = MileStoneLR_WarmUp(self.optimizer,
+                                            milestones=[75, 150],
+                                            gamma=0.5,
+                                            warmup_till=self.config.warmup_till,
+                                            warmup_mode=self.config.warmup_mode)
 
     def train(self, epoch):
         self.model.train()
@@ -478,107 +455,30 @@ class Solver(object):
             torch.set_default_tensor_type(torch.DoubleTensor)
         self.load_data()
         self.load_model()
-        # if self.config.dtype == 'float':
-        #     pass
-        # elif self.config.dtype == 'double':
-        #     self.model = self.model.to(dtype=torch.double)
-        #     if self.final_bn is not None:
-        #         self.final_bn = self.final_bn.to(dtype=torch.double)
-        #     if isinstance(self.criterion, nn.Module):
-        #         self.criterion = self.criterion.to(dtype=torch.double)
-        #     self.optimizer = self.optimizer.to(dtype=torch.double)
-        # else:
-        #     raise NotImplementedError
 
-        if not self.config.srl_two_phases:
-            self.criterion.cur_phase = 2
-            accuracy = 0
-            worst_precision = 0
-            for epoch in range(1, self.epochs + 1):
-                #self.scheduler.step(epoch)
-                if self.config.srl_posrate_lr:
-                    self.scheduler.step(self.criterion.pos_rate)
-                else:
-                    self.scheduler.step(epoch)
-                if self.srl and self.srl_lr < 0:
-                    cur_lr = self.optimizer.param_groups[0]['lr']
-                    self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
-                print("\n===> epoch: {0}/{1}".format(epoch, self.epochs))
-                if self.config.srl_alternate:
-                    self.train2(epoch)
-                else:
-                    self.train(epoch)
-                test_result = self.test(epoch)
-                accuracy = max(accuracy, test_result[1])
-                worst_precision = max(worst_precision, test_result[2])
-                if epoch == self.epochs:
-                    print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
-                    print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
-                    self.save()
-
-        else:
+        accuracy = 0
+        worst_precision = 0
+        for epoch in range(1, self.epochs + 1):
+            #self.scheduler.step(epoch)
             if self.config.srl_posrate_lr:
-                raise NotImplementedError
-
-            if not self.config.srl_alternate:
-                raise NotImplementedError
-
-            # phase 1
-            self.criterion.cur_phase = 1
-            accuracy = 0
-            worst_precision = 0
-            for epoch in range(1, self.epochs + 1):
+                self.scheduler.step(self.criterion.pos_rate)
+            else:
                 self.scheduler.step(epoch)
-                print("\n===>phase-1, epoch: {0}/{1}".format(epoch, self.epochs))
+            if self.srl and self.srl_lr < 0:
+                cur_lr = self.optimizer.param_groups[0]['lr']
+                self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
+            print("\n===> epoch: {0}/{1}".format(epoch, self.epochs))
+            if self.config.srl_alternate:
                 self.train2(epoch)
-                test_result = self.test(epoch)
-                accuracy = max(accuracy, test_result[1])
-                worst_precision = max(worst_precision, test_result[2])
-                if epoch == self.epochs:
-                    print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
-                    print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
-                    self.save()
-
-            # phase 2
-            self.criterion.cur_phase = 2
-            final_fc = self.model.module.final_fc
-            #if self.config.final_zero:
-            if True:
-                final_fc.weight.data = torch.zeros_like(final_fc.weight.data)
-                if final_fc.bias is not None:
-                    final_fc.bias.data = torch.zeros_like(final_fc.bias.data)
             else:
-                final_fc.reset_parameters()
-
-            if self.config.optim == 'adam':
-                self.optimizer = optim.Adam(final_fc.parameters(), lr=self.lr)
-            elif self.config.optim == 'adamw':
-                self.optimizer = optim.AdamW(final_fc.parameters(), lr=self.lr, weight_decay=0.)
-            elif self.config.optim == 'adammw':
-                from utils.optimizers import AdamMW
-                self.optimizer = AdamMW(final_fc.parameters(), lr=self.lr, weight_decay=0.)
-            else:
-                raise NotImplementedError
-
-            self.scheduler = MileStoneLR_WarmUp(self.optimizer,
-                                                milestones=[75, 150],
-                                                gamma=0.5,
-                                                warmup_till=self.config.warmup_till,
-                                                warmup_mode=self.config.warmup_mode)
-
-            accuracy = 0
-            worst_precision = 0
-            for epoch in range(self.epochs + 1, self.epochs * 2 + 1):
-                self.scheduler.step(epoch - self.epochs)
-                print("\n===>phase-2, epoch: {0}/{1}".format(epoch - self.epochs, self.epochs))
-                self.train2(epoch)
-                test_result = self.test(epoch)
-                accuracy = max(accuracy, test_result[1])
-                worst_precision = max(worst_precision, test_result[2])
-                if epoch == self.epochs:
-                    print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
-                    print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
-                    self.save()
+                self.train(epoch)
+            test_result = self.test(epoch)
+            accuracy = max(accuracy, test_result[1])
+            worst_precision = max(worst_precision, test_result[2])
+            if epoch == self.epochs:
+                print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
+                print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
+                self.save()
 
 
 if __name__ == '__main__':

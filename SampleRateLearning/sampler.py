@@ -55,10 +55,6 @@ class _HalfQueue(object):
             res.append(e)
             self._update(e)
 
-        # res = randsample(self.selection_pool, num)
-        # for e in res:
-        #     self._update(e)
-
         return res
 
 
@@ -78,33 +74,25 @@ class SampleRateBatchSampler(SampleRateSampler):
             total_indices.extend(idxs)
 
         self.instance_wise_sample_agent = _HalfQueue(total_indices, len(total_indices)-1)
-        self.cur_phase = 2
 
     def __next__(self):
         self.cur_idx += 1
         if self.cur_idx >= self.length:
             raise StopIteration
 
-        if self.cur_phase == 1:
-            batch = self.instance_wise_sample_agent.select(self.batch_size)
+        # b_num = binomial(self.batch_size, self.pos_rate)
 
-        elif self.cur_phase == 2:
-            # b_num = binomial(self.batch_size, self.pos_rate)
+        b_num = round(self.batch_size * self.pos_rate)
+        b_num = int(clip(b_num, 1, self.batch_size-1))
 
-            b_num = round(self.batch_size * self.pos_rate)
-            b_num = int(clip(b_num, 1, self.batch_size-1))
+        # b_num = round(self.batch_size * 0.5)
 
-            # b_num = round(self.batch_size * 0.5)
-
-            # float_b_num = self.batch_size * self.pos_rate
-            # b_num = int(float_b_num)
-            # if (float_b_num % 1) > 0:
-            #     b_num += (float_b_num % 1) > random()
-            a_num = self.batch_size - b_num
-            batch = self.sample_agents[0].select(a_num) + self.sample_agents[1].select(b_num)
-
-        else:
-            raise NotImplementedError
+        # float_b_num = self.batch_size * self.pos_rate
+        # b_num = int(float_b_num)
+        # if (float_b_num % 1) > 0:
+        #     b_num += (float_b_num % 1) > random()
+        a_num = self.batch_size - b_num
+        batch = self.sample_agents[0].select(a_num) + self.sample_agents[1].select(b_num)
 
         return batch
 

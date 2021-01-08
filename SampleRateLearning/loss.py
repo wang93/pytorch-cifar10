@@ -6,7 +6,7 @@ from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 class SRL_BCELoss(nn.Module):
     def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
-                 norm=False, pos_rate=None, in_train=True, alternate=False, soft_precision=False, alpha=None):
+                 pos_rate=None, in_train=True, alternate=False, soft_precision=False, alpha=None):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
@@ -19,7 +19,6 @@ class SRL_BCELoss(nn.Module):
         else:
             self.alpha = nn.Parameter(torch.tensor(float(alpha)).cuda())
 
-        self.norm = norm
         self.in_train = in_train
 
         self.alternate = alternate
@@ -102,12 +101,8 @@ class SRL_BCELoss(nn.Module):
 
         self.initial = True
 
-        self.cur_phase = 2
-
     def __setattr__(self, key, value):
         super(SRL_BCELoss, self).__setattr__(key, value)
-        if key == 'cur_phase':
-            self.sampler.cur_phase = value
 
     def forward2(self, scores, labels: torch.Tensor):
 
@@ -118,20 +113,11 @@ class SRL_BCELoss(nn.Module):
         self.val_losses = [neg_loss, pos_loss]
 
         loss = losses.mean()
-        # pos_rate = self.pos_rate.detach()
-        # loss = pos_loss * pos_rate + neg_loss * (1. - pos_rate)
 
         # adjust pos_rate
         if isinstance(self.pos_rate, torch.Tensor) and self.cur_phase == 2:
-            # if self.initial:
-            #     self.initial = False
-            #     pos_rate = (pos_loss / (pos_loss + neg_loss)).detach()
-            #     alpha = (pos_rate / (1. - pos_rate)).log().cpu().item()
-            #     self.alpha.data = torch.tensor(alpha).cuda()
-            #
-            # else:
+
             grad = (neg_loss - pos_loss).detach()
-            # grad = torch.clamp(grad, min=-5., max=5.)
             if not torch.isnan(grad):
                 self.pos_rate.backward(grad)
                 self.optimizer.step()
@@ -156,20 +142,8 @@ class SRL_BCELoss(nn.Module):
         train_pos_loss = train_pos_losses.mean()
         train_neg_loss = train_neg_losses.mean()
         self.train_losses = [train_neg_loss, train_pos_loss]
-            # self.val_losses = None
 
-        if self.norm:
-            loss = (train_neg_loss + train_pos_loss) / 2.
-        else:
-            loss = losses.mean()
-            # pos_rate = self.pos_rate.detach()
-            # loss = train_pos_loss * pos_rate + train_neg_loss * (1. - pos_rate)
-
-        #     pos_rate = self.pos_rate
-        #     if isinstance(pos_rate, torch.Tensor):
-        #         pos_rate = pos_rate.detach()
-        #     losses = torch.cat((train_neg_losses * (1. - pos_rate), train_pos_losses * pos_rate), dim=0)
-        #     loss = losses.mean() * 2.
+        loss = losses.mean()
 
         return loss
 
