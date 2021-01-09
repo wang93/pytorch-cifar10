@@ -15,10 +15,10 @@ class SampleRateSampler(Sampler):
         self.sample_num_per_epoch = len(data_source)
 
     def update(self, sample_rates):
-        if isinstance(sample_rates, float):
+        if isinstance(sample_rates, list):
             self.sample_rates = sample_rates
         else:
-            self.sample_rates = sample_rates.cpu().numpy().tolist()
+            self.sample_rates = sample_rates.detach().cpu().numpy().tolist()
 
     def __iter__(self):
         self.cur_idx = -1
