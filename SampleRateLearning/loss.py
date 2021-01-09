@@ -105,7 +105,7 @@ class SRL_CELoss(nn.Module):
             cur_losses = losses[cur_mask]
             cur_loss = cur_losses.mean()
             self.val_losses.append(cur_loss)
-        self.val_losses = torch.Tensor(self.val_losses)
+        self.val_losses = torch.Tensor(self.val_losses).cuda()
 
         loss = losses.mean()
 
