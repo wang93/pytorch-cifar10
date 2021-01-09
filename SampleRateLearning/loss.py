@@ -6,7 +6,7 @@ from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 class SRL_BCELoss(nn.Module):
     def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
-                 pos_rate=None, in_train=True, alternate=False, soft_precision=False, alpha=None):
+                 pos_rate=None, in_train=True, alternate=False, precision_super=False, alpha=None):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
@@ -22,7 +22,7 @@ class SRL_BCELoss(nn.Module):
         self.in_train = in_train
 
         self.alternate = alternate
-        self.soft_precision = soft_precision
+        self.precision_super = precision_super
 
         param_groups = [{'params': [self.alpha]}]
         if optim == "sgd":
@@ -90,7 +90,6 @@ class SRL_BCELoss(nn.Module):
         # self.optimizer.zero_grad()
         if pos_rate is None:
             self.pos_rate = self.alpha.sigmoid()
-            # self.pos_rate = self.alpha * 0.25
         else:
             self.pos_rate = pos_rate
 
@@ -98,11 +97,6 @@ class SRL_BCELoss(nn.Module):
 
         self.train_losses = None
         self.val_losses = None
-
-        self.initial = True
-
-    def __setattr__(self, key, value):
-        super(SRL_BCELoss, self).__setattr__(key, value)
 
     def forward2(self, scores, labels: torch.Tensor):
 
@@ -150,7 +144,7 @@ class SRL_BCELoss(nn.Module):
     def get_losses(self, scores, labels: torch.Tensor):
         is_pos = labels.type(torch.bool)
         scores = scores.sigmoid()
-        if self.soft_precision and self.alternate and self.training:
+        if self.precision_super and self.alternate and self.training:
             # losses = scores
             losses = (scores > 0.5).to(dtype=torch.float)
             losses[is_pos] = 1. - losses[is_pos]
@@ -163,7 +157,7 @@ class SRL_CELoss(SRL_BCELoss):
     def get_losses(self, scores, labels: torch.Tensor):
         labels = labels.to(dtype=torch.long).view(-1)
         is_pos = labels.type(torch.bool)
-        if self.soft_precision and self.alternate and self.training:
+        if self.precision_super and self.alternate and self.training:
             scores = torch.nn.functional.softmax(scores, dim=1)
             # losses = scores[:, 1].view(-1)
             losses = (scores[:, 1].view(-1) > 0.5).to(dtype=torch.float)

@@ -14,7 +14,6 @@ from utils.summary_writers import SummaryWriters
 from SampleRateLearning import global_variables
 from copy import deepcopy
 from utils.lr_strategy_generator import MileStoneLR_WarmUp
-import math
 
 CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
@@ -38,16 +37,8 @@ def main():
     parser.add_argument("--srl_alternate", action="store_true", help="sample rate learning in alternate mode or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
-    # parser.add_argument('--srl_norm', action="store_true", help="use normed srl")
-    # parser.add_argument('--srl_weight', action="store_true", help="srl with equal gradient")
-    # parser.add_argument('--srl_infer_init', '-sii', action="store_true", help="srl with inferenced initial alpha")
     parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
-    parser.add_argument("--srl_soft_precision", '-ssp', action="store_true", help="srl according to soft precision")
-    # parser.add_argument("--srl_two_phases", '-s2p', action="store_true",
-    #                     help="srl with decoupling representation and classifier")
-    # parser.add_argument("--srl_posrate_lr", '-spl', action="store_true",
-    #                     help="the lr of model is multiplied by min(posrate, 1-posrate)")
-    # parser.add_argument("--equal_gradient", '-eg', action="store_true", help="using equal-gradient loss")
+    parser.add_argument("--srl_precision", '-ssp', action="store_true", help="srl according to soft precision")
     parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
@@ -184,7 +175,7 @@ class Solver(object):
                                       pos_rate=self.config.pos_rate,
                                       in_train=self.config.srl_in_train,
                                       alternate=self.config.srl_alternate,
-                                      soft_precision=self.config.srl_soft_precision,
+                                      precision_super=self.config.srl_precision,
                                       alpha=None
                                       ).cuda()
 
@@ -246,9 +237,6 @@ class Solver(object):
             if final_fc.bias is not None:
                 final_fc.bias.data = torch.zeros_like(final_fc.bias.data)
 
-        # if self.config.final_bn:
-        #     from SampleRateLearning.special_batchnorm.batchnorm40 import BatchNorm1d as final_bn1d
-        #     self.final_bn = nn.DataParallel(final_bn1d()).cuda()
         if self.config.final_bn > 0.:
             from SampleRateLearning.special_batchnorm.batchnorm41 import BatchNorm1d as final_bn1d
             self.final_bn = nn.DataParallel(final_bn1d(base_momentum=self.config.final_bn)).cuda()
