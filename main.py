@@ -365,10 +365,10 @@ class Solver(object):
                                       optimizer=self.optimizer,
                                       criterion=self.criterion)
 
-        print('training loss: {:.5f}'.format(train_loss / (batch_num + 1)))
+        print('training loss:'.ljust(17) + '{:.5f}'.format(train_loss / (batch_num + 1)))
         if self.srl:
             m = lambda x: '{:.2f}'.format(x)
-            print('sample rates: {0}'.format(', '.join(map(m, self.criterion.sample_rates))))
+            print('sample rates:'.ljust(17) + ', '.join(map(m, self.criterion.sample_rates)))
 
         return train_loss, train_correct / total
 
@@ -405,20 +405,20 @@ class Solver(object):
 
         accuracy = test_correct / total
 
-        print('test accuracy: {:.2f}%'.format(100. * accuracy))
+        print('accuracy:'.ljust(17) + '{:.2f}%'.format(100. * accuracy))
 
         sample_nums = cm.sum(axis=1)
         hitted_nums = cm.diagonal()
         precisions = hitted_nums.astype(float) / sample_nums.astype(float)
 
-        s = 'precisions: '
+        s = 'precisions:'.ljust(17)
         for p in precisions:
             s += '{:.1f}%, '.format(p * 100)
         print(s)
 
         worst_precision = min(precisions)
 
-        print('worst precision: {:.1f}%'.format(worst_precision * 100))
+        print('worst precision:'.ljust(17) + '{:.1f}%'.format(worst_precision * 100))
 
         iter_num_per_epoch = len(self.train_loader)
         global_step = epoch * iter_num_per_epoch
