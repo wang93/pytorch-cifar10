@@ -364,8 +364,8 @@ class Solver(object):
 
         print('training loss:'.ljust(17) + '{:.5f}'.format(train_loss / (batch_num + 1)))
         if self.srl:
-            m = lambda x: '{:.2f}'.format(x)
-            print('sample rates:'.ljust(17) + ',  '.join(map(m, self.criterion.sample_rates)))
+            m = lambda x: '{:.3f}'.format(x)
+            print('sample rates:'.ljust(17) + ', '.join(map(m, self.criterion.sample_rates)))
 
         return train_loss, train_correct / total
 
