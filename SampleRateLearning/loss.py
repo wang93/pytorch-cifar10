@@ -113,12 +113,11 @@ class SRL_CELoss(nn.Module):
         if isinstance(self.sample_rates, torch.Tensor):
 
             grad = (self.val_losses.mean() - self.val_losses).detach()
-            if not torch.isnan(grad):
-                self.sample_rates.backward(grad)
-                self.optimizer.step()
-                self.optimizer.zero_grad(set_to_none=True)
-                self.sample_rates = self.alphas.softmax(dim=0)
-                self.sampler.update(self.sample_rates)
+            self.sample_rates.backward(grad)
+            self.optimizer.step()
+            self.optimizer.zero_grad(set_to_none=True)
+            self.sample_rates = self.alphas.softmax(dim=0)
+            self.sampler.update(self.sample_rates)
 
         return loss
 
