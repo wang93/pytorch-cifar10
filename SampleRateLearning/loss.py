@@ -4,27 +4,24 @@ from torch.optim import SGD, Adam, AdamW, RMSprop
 from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 
-class SRL_BCELoss(nn.Module):
+class SRL_CELoss(nn.Module):
     def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
-                 pos_rate=None, in_train=True, alternate=False, precision_super=False, alpha=None):
+                 sample_rates=None,  alternate=False, precision_super=False):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
-        super(SRL_BCELoss, self).__init__()
+        super(SRL_CELoss, self).__init__()
 
         self.sampler = sampler
 
-        if alpha is None:
-            self.alpha = nn.Parameter(torch.tensor(0.).cuda())
-        else:
-            self.alpha = nn.Parameter(torch.tensor(float(alpha)).cuda())
+        self.num_classes = len(sampler.sample_agents)
 
-        self.in_train = in_train
+        self.alphas = nn.Parameter(torch.zeros(self.num_classes).cuda())
 
         self.alternate = alternate
         self.precision_super = precision_super
 
-        param_groups = [{'params': [self.alpha]}]
+        param_groups = [{'params': [self.alphas]}]
         if optim == "sgd":
             default = {'lr': lr, 'momentum': momentum, 'weight_decay': weight_decay}
             optimizer = SGD(param_groups, **default)
@@ -88,80 +85,69 @@ class SRL_BCELoss(nn.Module):
 
         self.optimizer.zero_grad(set_to_none=True)
         # self.optimizer.zero_grad()
-        if pos_rate is None:
-            self.pos_rate = self.alpha.sigmoid()
+        if sample_rates is None:
+            self.sample_rates = self.alpha.softmax(dim=0)
         else:
-            self.pos_rate = pos_rate
+            self.sample_rates = sample_rates
 
-        self.sampler.update(self.pos_rate)
+        self.sampler.update(self.sample_rates)
 
         self.train_losses = None
         self.val_losses = None
 
     def forward2(self, scores, labels: torch.Tensor):
 
-        losses, is_pos = self.get_losses(scores, labels)
+        losses, labels = self.get_losses(scores, labels)
 
-        pos_loss = losses[is_pos].mean()
-        neg_loss = losses[~is_pos].mean()
-        self.val_losses = [neg_loss, pos_loss]
+        self.val_losses = []
+        for i in range(self.num_classes):
+            cur_mask = (labels == i)
+            cur_losses = losses[cur_mask]
+            cur_loss = cur_losses.mean()
+            self.val_losses.append(cur_loss)
+        self.val_losses = torch.Tensor(self.val_losses)
 
         loss = losses.mean()
 
-        # adjust pos_rate
-        if isinstance(self.pos_rate, torch.Tensor):
+        # adjust sample_rates
+        if isinstance(self.sample_rates, torch.Tensor):
 
-            grad = (neg_loss - pos_loss).detach()
+            grad = (self.val_losses.mean() - self.val_losses).detach()
             if not torch.isnan(grad):
-                self.pos_rate.backward(grad)
+                self.sample_rates.backward(grad)
                 self.optimizer.step()
                 self.optimizer.zero_grad(set_to_none=True)
-                # self.optimizer.zero_grad()
-                self.pos_rate = self.alpha.sigmoid()
-                # self.pos_rate = self.alpha * 0.25
-                self.sampler.update(self.pos_rate)
+                self.sample_rates = self.alphas.sigmoid()
+                self.sampler.update(self.sample_rates)
 
         return loss
 
     def forward(self, scores, labels: torch.Tensor):
+
         if self.training and self.alternate:
             return self.forward2(scores, labels)
 
-        losses, is_pos = self.get_losses(scores, labels)
-        if is_pos.size(0) > self.sampler.batch_size:
+        losses, labels = self.get_losses(scores, labels)
+        if labels.size(0) > self.sampler.batch_size:
             raise NotImplementedError('This condition is abandoned!')
 
-        train_pos_losses = losses[is_pos]
-        train_neg_losses = losses[~is_pos]
-        train_pos_loss = train_pos_losses.mean()
-        train_neg_loss = train_neg_losses.mean()
-        self.train_losses = [train_neg_loss, train_pos_loss]
+        self.train_losses = []
+        for i in range(self.num_classes):
+            cur_mask = (labels == i)
+            cur_losses = losses[cur_mask]
+            cur_loss = cur_losses.mean()
+            self.train_losses.append(cur_loss)
 
         loss = losses.mean()
 
         return loss
 
     def get_losses(self, scores, labels: torch.Tensor):
-        is_pos = labels.type(torch.bool)
-        scores = scores.sigmoid()
-        if self.precision_super and self.alternate and self.training:
-            # losses = scores
-            losses = (scores > 0.5).to(dtype=torch.float)
-            losses[is_pos] = 1. - losses[is_pos]
-        else:
-            losses = nn.BCELoss(reduction='none')(scores, labels)
-        return losses, is_pos
-
-
-class SRL_CELoss(SRL_BCELoss):
-    def get_losses(self, scores, labels: torch.Tensor):
         labels = labels.to(dtype=torch.long).view(-1)
-        is_pos = labels.type(torch.bool)
         if self.precision_super and self.alternate and self.training:
-            scores = torch.nn.functional.softmax(scores, dim=1)
-            # losses = scores[:, 1].view(-1)
-            losses = (scores[:, 1].view(-1) > 0.5).to(dtype=torch.float)
-            losses[is_pos] = 1. - losses[is_pos]
+            scores = scores.softmax(dim=1)
+            scores = scores[list(range(scores.size(0))), labels]
+            losses = (scores < 0.5).to(dtype=torch.float)
         else:
             losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
-        return losses, is_pos
+        return losses, labels

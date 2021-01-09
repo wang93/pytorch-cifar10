@@ -37,9 +37,8 @@ def main():
     parser.add_argument("--srl_alternate", action="store_true", help="sample rate learning in alternate mode or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
-    parser.add_argument("--srl_in_train", '-st', action="store_true", help="sample rate learning in the training set")
     parser.add_argument("--srl_precision", '-ssp', action="store_true", help="srl according to soft precision")
-    parser.add_argument('--pos_rate', default=None, type=float, help='pos_rate in srl')
+    parser.add_argument('--sample_rates', default=None, type=float, help='pos_rate in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
     parser.add_argument('--special_bn', default=-1, type=int, help='version of stable bn')
@@ -56,6 +55,8 @@ def main():
     if not args.srl:
         args.srl_alternate = False
         args.srl_in_train = False
+
+    args.sample_rates = eval(args.sample_rates)
 
     prepare_running(args)
     solver = Solver(args)
@@ -172,11 +173,9 @@ class Solver(object):
             self.criterion = SRL_LOSS(sampler=batch_sampler,
                                       optim=self.config.srl_optim,
                                       lr=max(self.srl_lr, 0),
-                                      pos_rate=self.config.pos_rate,
-                                      in_train=self.config.srl_in_train,
+                                      sample_rates=self.config.sample_rates,
                                       alternate=self.config.srl_alternate,
                                       precision_super=self.config.srl_precision,
-                                      alpha=None
                                       ).cuda()
 
         else:
@@ -341,7 +340,6 @@ class Solver(object):
             if self.final_bn is not None:
                 self.final_bn.eval()
             self.criterion.train()
-            # self.criterion.optimizer.zero_grad()
             val_data, val_target = self.val_loader.next()
             if self.config.dtype == 'double':
                 val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
@@ -368,7 +366,8 @@ class Solver(object):
 
         print('training loss: {:.5f}'.format(train_loss / (batch_num + 1)))
         if self.srl:
-            print('pos rate: {:.4f}'.format(self.criterion.pos_rate))
+            m = lambda x: str(x.cpu().item())
+            print('sample rates: {0}'.format(', '.join(map(m, self.criterion.sample_rates))))
 
         return train_loss, train_correct / total
 
@@ -411,7 +410,7 @@ class Solver(object):
         hitted_nums = cm.diagonal()
         precisions = hitted_nums.astype(float) / sample_nums.astype(float)
 
-        s = 'the precisions are: '
+        s = 'the precisions are '
         for p in precisions:
             s += '{:.1f}%, '.format(p * 100)
         print(s)

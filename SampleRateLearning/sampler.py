@@ -11,14 +11,14 @@ class SampleRateSampler(Sampler):
     def __init__(self, data_source):
         super(SampleRateSampler, self).__init__(data_source)
         self.data_source = data_source
-        self.pos_rate = 0.5
+        self.sample_rates = None
         self.sample_num_per_epoch = len(data_source)
 
-    def update(self, pos_rate):
-        if isinstance(pos_rate, float):
-            self.pos_rate = pos_rate
+    def update(self, sample_rates):
+        if isinstance(sample_rates, float):
+            self.sample_rates = sample_rates
         else:
-            self.pos_rate = pos_rate.cpu().item()
+            self.sample_rates = sample_rates.cpu().numpy().tolist()
 
     def __iter__(self):
         self.cur_idx = -1
@@ -65,7 +65,6 @@ class SampleRateBatchSampler(SampleRateSampler):
         for i, t in enumerate(data_source.targets):
             indices[t].append(i)
         self.sample_agents = [_HalfQueue(sub_indices, batch_size) for sub_indices in indices]
-        # self.sample_agents = [_HalfQueue(sub_indices, len(sub_indices) - 1) for sub_indices in indices]
         self.length = (self.sample_num_per_epoch + self.batch_size - 1) // self.batch_size
 
         total_indices = []
@@ -79,19 +78,12 @@ class SampleRateBatchSampler(SampleRateSampler):
         if self.cur_idx >= self.length:
             raise StopIteration
 
-        # b_num = binomial(self.batch_size, self.pos_rate)
+        nums = [round(self.batch_size*r) for r in self.sample_rates]
+        nums = [int(clip(n, 1, self.batch_size-1)) for n in nums]
 
-        b_num = round(self.batch_size * self.pos_rate)
-        b_num = int(clip(b_num, 1, self.batch_size-1))
-
-        # b_num = round(self.batch_size * 0.5)
-
-        # float_b_num = self.batch_size * self.pos_rate
-        # b_num = int(float_b_num)
-        # if (float_b_num % 1) > 0:
-        #     b_num += (float_b_num % 1) > random()
-        a_num = self.batch_size - b_num
-        batch = self.sample_agents[0].select(a_num) + self.sample_agents[1].select(b_num)
+        batch = []
+        for agent, num in zip(self.sample_agents, nums):
+            batch.extend(agent.select(num))
 
         return batch
 
