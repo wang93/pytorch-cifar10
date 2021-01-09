@@ -38,7 +38,7 @@ def main():
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
     parser.add_argument("--srl_precision", '-ssp', action="store_true", help="srl according to soft precision")
-    parser.add_argument('--sample_rates', default=None, type=float, help='pos_rate in srl')
+    parser.add_argument('--sample_rates', default=None, type=str, help='sample rates in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
     parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
     parser.add_argument('--special_bn', default=-1, type=int, help='version of stable bn')
@@ -56,7 +56,8 @@ def main():
         args.srl_alternate = False
         args.srl_in_train = False
 
-    args.sample_rates = eval(args.sample_rates)
+    if args.sample_rates is not None:
+        args.sample_rates = eval(args.sample_rates)
 
     prepare_running(args)
     solver = Solver(args)
