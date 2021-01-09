@@ -86,7 +86,7 @@ class SRL_CELoss(nn.Module):
         self.optimizer.zero_grad(set_to_none=True)
         # self.optimizer.zero_grad()
         if sample_rates is None:
-            self.sample_rates = self.alpha.softmax(dim=0)
+            self.sample_rates = self.alphas.softmax(dim=0)
         else:
             self.sample_rates = sample_rates
 
@@ -117,7 +117,7 @@ class SRL_CELoss(nn.Module):
                 self.sample_rates.backward(grad)
                 self.optimizer.step()
                 self.optimizer.zero_grad(set_to_none=True)
-                self.sample_rates = self.alphas.sigmoid()
+                self.sample_rates = self.alphas.softmax(dim=0)
                 self.sampler.update(self.sample_rates)
 
         return loss
