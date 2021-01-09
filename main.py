@@ -255,56 +255,6 @@ class Solver(object):
                                             warmup_mode=self.config.warmup_mode)
 
     def train(self, epoch):
-        self.model.train()
-        if isinstance(self.criterion, nn.Module):
-            self.criterion.train()
-
-        train_loss = 0
-        train_correct = 0
-        total = 0
-
-        iter_num_per_epoch = len(self.train_loader)
-        global_step = (epoch - 1) * iter_num_per_epoch
-
-        for batch_num, (data, target) in enumerate(self.train_loader):
-            if self.config.dtype == 'double':
-                data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
-            if self.config.srl_posrate_lr:
-                self.scheduler.step(self.criterion.pos_rate)
-
-            if self.val_loader is not None:
-                raise NotImplementedError
-
-            data, target = data.cuda(), target.cuda()
-            global_variables.parse_target(target)
-
-            self.optimizer.zero_grad()
-            output = self.model(data)
-            if self.final_bn is not None:
-                output = self.final_bn(output)
-            loss = self.criterion(output, target)
-            loss.backward()
-            self.optimizer.step()
-
-            global_step += 1
-            self.recorder.record_iter(loss, global_step,
-                                      optimizer=self.optimizer,
-                                      criterion=self.criterion)
-
-            train_loss += loss.item()
-            prediction = torch.max(output, 1)  # second param "1" represents the dimension to be reduced
-            total += target.size(0)
-
-            # train_correct incremented by one if predicted right
-            train_correct += np.sum(prediction[1].cpu().numpy() == target.cpu().numpy())
-
-        print('training loss: {:.5f}'.format(train_loss / (batch_num + 1)))
-        if self.srl:
-            print('pos rate: {:.4f}'.format(self.criterion.pos_rate))
-
-        return train_loss, train_correct / total
-
-    def train2(self, epoch):
         train_loss = 0
         train_correct = 0
         total = 0
@@ -362,10 +312,10 @@ class Solver(object):
                                       optimizer=self.optimizer,
                                       criterion=self.criterion)
 
-        print('training loss:'.ljust(17) + '{:.5f}'.format(train_loss / (batch_num + 1)))
+        print('training loss:'.ljust(19) + '{:.5f}'.format(train_loss / (batch_num + 1)))
         if self.srl:
             m = lambda x: '{:.3f}'.format(x)
-            print('sample rates:'.ljust(17) + ', '.join(map(m, self.criterion.sample_rates)))
+            print('sample rates:'.ljust(19) + ', '.join(map(m, self.criterion.sample_rates)))
 
         return train_loss, train_correct / total
 
@@ -402,20 +352,23 @@ class Solver(object):
 
         accuracy = test_correct / total
 
-        print('accuracy:'.ljust(17) + '{:.2f}%'.format(100. * accuracy))
+        print('accuracy:'.ljust(19) + '{:.2f}%'.format(100. * accuracy))
 
         sample_nums = cm.sum(axis=1)
         hitted_nums = cm.diagonal()
         precisions = hitted_nums.astype(float) / sample_nums.astype(float)
 
-        s = 'precisions:'.ljust(17)
+        s = 'precisions:'.ljust(19)
         for p in precisions:
             s += '{:.1f}%, '.format(p * 100)
         print(s)
 
+        average_precision = sum(precisions) / len(precisions)
+        print('average precision:'.ljust(19) + '{:.1f}%'.format(average_precision * 100))
+
         worst_precision = min(precisions)
 
-        print('worst precision:'.ljust(17) + '{:.1f}%'.format(worst_precision * 100))
+        print('worst precision:'.ljust(19) + '{:.1f}%'.format(worst_precision * 100))
 
         iter_num_per_epoch = len(self.train_loader)
         global_step = epoch * iter_num_per_epoch
@@ -444,10 +397,7 @@ class Solver(object):
                 cur_lr = self.optimizer.param_groups[0]['lr']
                 self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
             print("\n===> epoch: {0}/{1}".format(epoch, self.epochs))
-            if self.config.srl_alternate:
-                self.train2(epoch)
-            else:
-                self.train(epoch)
+            self.train(epoch)
             test_result = self.test(epoch)
             accuracy = max(accuracy, test_result[1])
             worst_precision = max(worst_precision, test_result[2])
