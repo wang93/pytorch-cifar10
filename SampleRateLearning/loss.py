@@ -127,8 +127,6 @@ class SRL_CELoss(nn.Module):
             return self.forward2(scores, labels)
 
         losses, labels = self.get_losses(scores, labels)
-        if labels.size(0) > self.sampler.batch_size:
-            raise NotImplementedError('This condition is abandoned!')
 
         self.train_losses = []
         for i in range(self.num_classes):
