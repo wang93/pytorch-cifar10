@@ -6,7 +6,7 @@ from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 class SRL_CELoss(nn.Module):
     def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
-                 sample_rates=None,  alternate=False, precision_super=False):
+                 sample_rates=None, precision_super=False):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
@@ -18,7 +18,6 @@ class SRL_CELoss(nn.Module):
 
         self.alphas = nn.Parameter(torch.zeros(self.num_classes).cuda())
 
-        self.alternate = alternate
         self.precision_super = precision_super
 
         param_groups = [{'params': [self.alphas]}]
@@ -97,7 +96,14 @@ class SRL_CELoss(nn.Module):
 
     def forward2(self, scores, labels: torch.Tensor):
 
-        losses, labels = self.get_losses(scores, labels)
+        # losses, labels = self.get_losses(scores, labels)
+        labels = labels.to(dtype=torch.long).view(-1)
+        if self.precision_super:
+            scores = scores.softmax(dim=1)
+            scores = scores[list(range(scores.size(0))), labels]
+            losses = (scores < 0.5).to(dtype=torch.float)
+        else:
+            losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
 
         self.val_losses = []
         for i in range(self.num_classes):
@@ -123,10 +129,12 @@ class SRL_CELoss(nn.Module):
 
     def forward(self, scores, labels: torch.Tensor):
 
-        if self.training and self.alternate:
+        if self.training:
             return self.forward2(scores, labels)
 
-        losses, labels = self.get_losses(scores, labels)
+        # losses, labels = self.get_losses(scores, labels)
+        labels = labels.to(dtype=torch.long).view(-1)
+        losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
 
         self.train_losses = []
         for i in range(self.num_classes):
@@ -138,13 +146,3 @@ class SRL_CELoss(nn.Module):
         loss = losses.mean()
 
         return loss
-
-    def get_losses(self, scores, labels: torch.Tensor):
-        labels = labels.to(dtype=torch.long).view(-1)
-        if self.precision_super and self.alternate and self.training:
-            scores = scores.softmax(dim=1)
-            scores = scores[list(range(scores.size(0))), labels]
-            losses = (scores < 0.5).to(dtype=torch.float)
-        else:
-            losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
-        return losses, labels

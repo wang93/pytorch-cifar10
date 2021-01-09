@@ -34,7 +34,7 @@ def main():
     parser.add_argument('--dtype', default='float', type=str, help='dtype of parameters and buffers')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
-    parser.add_argument("--srl_alternate", action="store_true", help="sample rate learning in alternate mode or not.")
+    #parser.add_argument("--srl_alternate", action="store_true", help="sample rate learning in alternate mode or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
     parser.add_argument("--srl_precision", '-ssp', action="store_true", help="srl according to soft precision")
@@ -172,7 +172,6 @@ class Solver(object):
                                       optim=self.config.srl_optim,
                                       lr=max(self.srl_lr, 0),
                                       sample_rates=self.config.sample_rates,
-                                      alternate=self.config.srl_alternate,
                                       precision_super=self.config.srl_precision,
                                       ).cuda()
 
@@ -266,7 +265,6 @@ class Solver(object):
             if self.config.dtype == 'double':
                 data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
 
-
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
 
@@ -284,19 +282,20 @@ class Solver(object):
             self.optimizer.step()
 
             # srl
-            self.model.eval()
-            if self.final_bn is not None:
-                self.final_bn.eval()
-            self.criterion.train()
-            val_data, val_target = self.val_loader.next()
-            if self.config.dtype == 'double':
-                val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
-            val_data, val_target = val_data.cuda(), val_target.cuda()
-            with torch.no_grad():
-                val_output = self.model(val_data)
+            if self.srl:
+                self.model.eval()
                 if self.final_bn is not None:
-                    val_output = self.final_bn(val_output)
-            self.criterion(val_output, val_target)
+                    self.final_bn.eval()
+                self.criterion.train()
+                val_data, val_target = self.val_loader.next()
+                if self.config.dtype == 'double':
+                    val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
+                val_data, val_target = val_data.cuda(), val_target.cuda()
+                with torch.no_grad():
+                    val_output = self.model(val_data)
+                    if self.final_bn is not None:
+                        val_output = self.final_bn(val_output)
+                self.criterion(val_output, val_target)
 
             train_loss += loss.item()
             prediction = torch.max(output, 1)  # second param "1" represents the dimension to be reduced
