@@ -411,14 +411,14 @@ class Solver(object):
         hitted_nums = cm.diagonal()
         precisions = hitted_nums.astype(float) / sample_nums.astype(float)
 
-        s = 'the precisions are '
+        s = 'precisions: '
         for p in precisions:
             s += '{:.1f}%, '.format(p * 100)
         print(s)
 
         worst_precision = min(precisions)
 
-        print('the worst precision is {:.1f}%'.format(worst_precision * 100))
+        print('worst precision: {:.1f}%'.format(worst_precision * 100))
 
         iter_num_per_epoch = len(self.train_loader)
         global_step = epoch * iter_num_per_epoch
