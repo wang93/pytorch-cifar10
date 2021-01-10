@@ -76,7 +76,7 @@ class Solver(object):
         self.train_loader = None
         self.val_loader = None
         self.test_loader = None
-        self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.config.classes])
+        self.recorder = SummaryWriters(self.config, [CLASSES[c] for c in self.config.classes])
         global_variables.classes_num = len(self.config.classes)
         global_variables.train_batch_size = self.config.train_batch_size
 
@@ -350,7 +350,7 @@ class Solver(object):
         print(s)
 
         average_precision = sum(precisions) / len(precisions)
-        print('average precision:'.ljust(19) + '{:.1f}%'.format(average_precision * 100))
+        print('average precision:'.ljust(19) + '{:.2f}%'.format(average_precision * 100))
 
         worst_precision = min(precisions)
 
