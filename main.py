@@ -155,7 +155,7 @@ class Solver(object):
             from SampleRateLearning.sampler import SampleRateBatchSampler
             from SampleRateLearning.loss import SRL_CELoss as SRL_LOSS
 
-            batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.config.train_batch_size)
+            batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.config.trainBatchSize)
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_sampler=batch_sampler)
 
             self.criterion = SRL_LOSS(sampler=batch_sampler,
