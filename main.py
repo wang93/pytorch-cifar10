@@ -34,7 +34,6 @@ def main():
     parser.add_argument('--dtype', default='float', type=str, help='dtype of parameters and buffers')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
     parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
-    #parser.add_argument("--srl_alternate", action="store_true", help="sample rate learning in alternate mode or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
     parser.add_argument("--srl_precision", '-ssp', action="store_true", help="srl according to soft precision")
@@ -59,6 +58,9 @@ def main():
     if args.sample_rates is not None:
         args.sample_rates = eval(args.sample_rates)
 
+    args.classes = eval(args.classes)
+    args.sub_sample = eval(args.sub_sample)
+
     prepare_running(args)
     solver = Solver(args)
     solver.run()
@@ -66,32 +68,17 @@ def main():
 
 class Solver(object):
     def __init__(self, config):
+        self.config = config
         self.model = None
-        self.lr = config.lr
-        self.arc = config.arc
-        self.epochs = config.epoch
-        self.exp = config.exp
-        self.train_batch_size = config.trainBatchSize
-        self.val_batch_size = config.valBatchSize
-        self.test_batch_size = config.testBatchSize
         self.criterion = None
         self.optimizer = None
         self.scheduler = None
         self.train_loader = None
         self.val_loader = None
         self.test_loader = None
-        self.classes = eval(config.classes)
-        self.ratios = eval(config.sub_sample)
-        self.srl = config.srl
-        self.srl_lr = config.srl_lr
-        self.val_ratio = config.val_ratio
-        self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.classes])
-        self.special_bn = config.special_bn
-        self.config = config
-        self.final_bn = None
-
-        global_variables.classes_num = len(self.classes)
-        global_variables.train_batch_size = self.train_batch_size
+        self.recorder = SummaryWriters(config, [CLASSES[c] for c in self.config.classes])
+        global_variables.classes_num = len(self.config.classes)
+        global_variables.train_batch_size = self.config.train_batch_size
 
     @staticmethod
     def _sub_data(dataset, classes, ratios=None):
@@ -153,36 +140,36 @@ class Solver(object):
         test_transform = transforms.Compose([transforms.ToTensor(), normalize])
 
         train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
-        train_set = self._sub_data(train_set, self.classes, self.ratios)
-        train_set, val_set = self._split_data(train_set, test_transform, self.val_ratio)
+        train_set = self._sub_data(train_set, self.config.classes, self.config.sub_sample)
+        train_set, val_set = self._split_data(train_set, test_transform, self.config.val_ratio)
 
         if val_set is not None:
             from SampleRateLearning.sampler import ValidationBatchSampler
-            batch_sampler = ValidationBatchSampler(data_source=val_set, batch_size=self.val_batch_size)
+            batch_sampler = ValidationBatchSampler(data_source=val_set, batch_size=self.config.valBatchSize)
             self.val_loader = iter(torch.utils.data.DataLoader(dataset=val_set, batch_sampler=batch_sampler))
 
-        if self.srl:
+        if self.config.srl:
             from SampleRateLearning.sampler import SampleRateBatchSampler
             from SampleRateLearning.loss import SRL_CELoss as SRL_LOSS
 
-            batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.train_batch_size)
+            batch_sampler = SampleRateBatchSampler(data_source=train_set, batch_size=self.config.train_batch_size)
             self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_sampler=batch_sampler)
 
             self.criterion = SRL_LOSS(sampler=batch_sampler,
                                       optim=self.config.srl_optim,
-                                      lr=max(self.srl_lr, 0),
+                                      lr=max(self.config.srl_lr, 0),
                                       sample_rates=self.config.sample_rates,
                                       precision_super=self.config.srl_precision,
                                       ).cuda()
 
         else:
-            self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.train_batch_size,
+            self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.config.train_batch_size,
                                                             shuffle=True)
             self.criterion = nn.CrossEntropyLoss().cuda()
 
         test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
-        self._sub_data(test_set, self.classes)
-        self.test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=self.test_batch_size, shuffle=False)
+        self._sub_data(test_set, self.config.classes)
+        self.test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=self.config.testBatchSize, shuffle=False)
 
     def load_model(self):
         targets = self.train_loader.dataset.targets
@@ -214,10 +201,10 @@ class Solver(object):
             'densenet201': DenseNet201,
             'wresnet': WideResNet
         }
-        model = model_factory[self.arc](class_num=len(self.classes))
+        model = model_factory[self.config.arc](class_num=len(self.config.classes))
 
-        if self.special_bn >= 0:
-            model_path = 'SampleRateLearning.special_batchnorm.batchnorm{0}'.format(self.special_bn)
+        if self.config.special_bn >= 0:
+            model_path = 'SampleRateLearning.special_batchnorm.batchnorm{0}'.format(self.config.special_bn)
             sbn = import_module(model_path)
             model = sbn.convert_model(model)
 
@@ -238,12 +225,12 @@ class Solver(object):
             self.final_bn = nn.DataParallel(final_bn1d(base_momentum=self.config.final_bn)).cuda()
 
         if self.config.optim == 'adam':
-            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.config.lr)
         elif self.config.optim == 'adamw':
-            self.optimizer = optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=0.)
+            self.optimizer = optim.AdamW(self.model.parameters(), lr=self.config.lr, weight_decay=0.)
         elif self.config.optim == 'adammw':
             from utils.optimizers import AdamMW
-            self.optimizer = AdamMW(self.model.parameters(), lr=self.lr, weight_decay=0.)
+            self.optimizer = AdamMW(self.model.parameters(), lr=self.config.lr, weight_decay=0.)
         else:
             raise NotImplementedError
 
@@ -282,7 +269,7 @@ class Solver(object):
             self.optimizer.step()
 
             # srl
-            if self.srl:
+            if self.config.srl:
                 self.model.eval()
                 if self.final_bn is not None:
                     self.final_bn.eval()
@@ -312,7 +299,7 @@ class Solver(object):
                                       criterion=self.criterion)
 
         print('training loss:'.ljust(19) + '{:.5f}'.format(train_loss / (batch_num + 1)))
-        if self.srl:
+        if self.config.srl:
             m = lambda x: '{:.3f}'.format(x)
             print('sample rates:'.ljust(19) + ', '.join(map(m, self.criterion.sample_rates)))
 
@@ -328,7 +315,7 @@ class Solver(object):
         test_loss = 0
         test_correct = 0
         total = 0
-        class_num = len(self.classes)
+        class_num = len(self.config.classes)
         cm = np.zeros((class_num, class_num), dtype=np.int)
 
         with torch.no_grad():
@@ -347,7 +334,7 @@ class Solver(object):
 
                 y_pred = prediction.view(-1).cpu().numpy().tolist()
                 y_true = target.view(-1).cpu().numpy().tolist()
-                cm += confusion_matrix(y_pred=y_pred, y_true=y_true, labels=list(range(len(self.classes))))
+                cm += confusion_matrix(y_pred=y_pred, y_true=y_true, labels=list(range(len(self.config.classes))))
 
         accuracy = test_correct / total
 
@@ -377,7 +364,7 @@ class Solver(object):
         return test_loss, test_correct / total, worst_precision
 
     def save(self):
-        model_out_path = join('./exps', self.exp, "model.pth")
+        model_out_path = join('./exps', self.config.exp, "model.pth")
         torch.save(self.model, model_out_path)
         print("Checkpoint saved to {}".format(model_out_path))
 
@@ -389,18 +376,18 @@ class Solver(object):
 
         accuracy = 0
         worst_precision = 0
-        for epoch in range(1, self.epochs + 1):
+        for epoch in range(1, self.config.epoch + 1):
             self.scheduler.step(epoch)
 
-            if self.srl and self.srl_lr < 0:
+            if self.config.srl and self.config.srl_lr < 0:
                 cur_lr = self.optimizer.param_groups[0]['lr']
                 self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
-            print("\n===> epoch: {0}/{1}".format(epoch, self.epochs))
+            print("\n===> epoch: {0}/{1}".format(epoch, self.config.epoch))
             self.train(epoch)
             test_result = self.test(epoch)
             accuracy = max(accuracy, test_result[1])
             worst_precision = max(worst_precision, test_result[2])
-            if epoch == self.epochs:
+            if epoch == self.config.epoch:
                 print("\n===> BEST ACCURACY: %.2f%%" % (accuracy * 100))
                 print("===> BEST WORST PRECISION: %.1f%%" % (worst_precision * 100))
                 self.save()
