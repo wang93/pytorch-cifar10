@@ -21,6 +21,8 @@ CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 def main():
     parser = argparse.ArgumentParser(description="cifar-10 with PyTorch")
     parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
+    parser.add_argument('--gamma', default=0.1, type=float, help='learning-rate-decay factor')
+    parser.add_argument('--milestones', '-ms', default='[75,150]', type=str, help='milestones in lr schedule')
     parser.add_argument('--optim', default='adam', type=str, help='the optimizer for model')
     parser.add_argument('--epoch', default=200, type=int, help='number of epochs tp train for')
     parser.add_argument('--trainBatchSize', default=100, type=int, help='training batch size')
@@ -60,6 +62,7 @@ def main():
 
     args.classes = eval(args.classes)
     args.sub_sample = eval(args.sub_sample)
+    args.milestones = eval(args.milestones)
 
     prepare_running(args)
     solver = Solver(args)
@@ -226,6 +229,8 @@ class Solver(object):
 
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.config.lr)
+        elif self.config.optim == 'sgd':
+            self.optimizer = optim.SGD(self.model.parameters(), lr=self.config.lr, weight_decay=0.0002)
         elif self.config.optim == 'adamw':
             self.optimizer = optim.AdamW(self.model.parameters(), lr=self.config.lr, weight_decay=0.)
         elif self.config.optim == 'adammw':
@@ -235,8 +240,8 @@ class Solver(object):
             raise NotImplementedError
 
         self.scheduler = MileStoneLR_WarmUp(self.optimizer,
-                                            milestones=[75, 150],
-                                            gamma=0.5,
+                                            milestones=self.config.milestones,
+                                            gamma=self.config.gamma,
                                             warmup_till=self.config.warmup_till,
                                             warmup_mode=self.config.warmup_mode)
 
