@@ -29,7 +29,7 @@ class RMSprop3(RMSprop):
                 # State initialization
                 if len(state) == 0:
                     state['step'] = 0
-                    state['square_avg'] = torch.Tensor(0.).to(device=p.device, dtype=p.dtype) #torch.ones_like(p, memory_format=torch.preserve_format)
+                    state['square_avg'] = torch.Tensor([0.]).to(device=p.device, dtype=p.dtype) #torch.ones_like(p, memory_format=torch.preserve_format)
                     if group['momentum'] > 0:
                         state['momentum_buffer'] = torch.zeros_like(p, memory_format=torch.preserve_format)
                     if group['centered']:
