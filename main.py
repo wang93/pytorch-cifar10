@@ -167,7 +167,7 @@ class Solver(object):
                                       ).cuda()
 
         else:
-            self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.config.train_batch_size,
+            self.train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=self.config.trainBatchSize,
                                                             shuffle=True)
             self.criterion = nn.CrossEntropyLoss().cuda()
 
