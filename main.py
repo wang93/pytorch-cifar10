@@ -81,7 +81,7 @@ class Solver(object):
         self.test_loader = None
         self.recorder = SummaryWriters(self.config, [CLASSES[c] for c in self.config.classes])
         global_variables.classes_num = len(self.config.classes)
-        global_variables.train_batch_size = self.config.train_batch_size
+        global_variables.train_batch_size = self.config.trainBatchSize
 
     @staticmethod
     def _sub_data(dataset, classes, ratios=None):
