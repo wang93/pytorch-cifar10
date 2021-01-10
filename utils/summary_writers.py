@@ -48,9 +48,9 @@ class SummaryWriters(object):
                     writer.add_scalar('train_losses', normal_scalar(t_loss), global_step)
                     writer.add_scalar('sample_rate', normal_scalar(sample_rate), global_step)
 
-        if criterion.val_losses is not None:
-            for writer, v_loss in zip(self.class_summary_writers, criterion.val_losses):
-                writer.add_scalar('val_losses', normal_scalar(v_loss), global_step)
+            if criterion.val_losses is not None:
+                for writer, v_loss in zip(self.class_summary_writers, criterion.val_losses):
+                    writer.add_scalar('val_losses', normal_scalar(v_loss), global_step)
 
         if optimizer is not None:
             cur_lr = optimizer.param_groups[0]['lr']
