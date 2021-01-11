@@ -79,7 +79,7 @@ class SampleRateBatchSampler(SampleRateSampler):
             raise StopIteration
 
         nums = [round(self.batch_size*r) for r in self.sample_rates]
-        nums = [int(clip(n, 1, self.batch_size-1)) for n in nums]
+        # nums = [int(clip(n, 1, self.batch_size-1)) for n in nums]
 
         batch = []
         for agent, num in zip(self.sample_agents, nums):
