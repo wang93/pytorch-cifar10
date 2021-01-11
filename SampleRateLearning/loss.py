@@ -4,6 +4,13 @@ from torch.optim import SGD, Adam, AdamW, RMSprop
 from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 
+def get_rates(alphas):
+    # return alphas.softmax(dim=0)
+    intensities = nn.ELU()(alphas) + 1.
+    rates = intensities / intensities.sum()
+    return rates
+
+
 class SRL_CELoss(nn.Module):
     def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
                  sample_rates=None, precision_super=False):
@@ -92,7 +99,8 @@ class SRL_CELoss(nn.Module):
         self.optimizer.zero_grad(set_to_none=True)
         # self.optimizer.zero_grad()
         if sample_rates is None:
-            self.sample_rates = self.alphas.softmax(dim=0)
+            # self.sample_rates = self.alphas.softmax(dim=0)
+            self.sample_rates = get_rates(self.alphas)
         else:
             self.sample_rates = sample_rates
 
@@ -124,12 +132,12 @@ class SRL_CELoss(nn.Module):
 
         # adjust sample_rates
         if isinstance(self.sample_rates, torch.Tensor):
-
             grad = - self.val_losses.detach()
             self.sample_rates.backward(grad)
             self.optimizer.step()
             self.optimizer.zero_grad(set_to_none=True)
-            self.sample_rates = self.alphas.softmax(dim=0)
+            # self.sample_rates = self.alphas.softmax(dim=0)
+            self.sample_rates = get_rates(self.alphas)
             self.sampler.update(self.sample_rates)
 
         return loss
