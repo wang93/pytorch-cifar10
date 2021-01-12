@@ -387,7 +387,7 @@ class Solver(object):
 
             if self.config.srl and self.config.srl_lr < 0:
                 cur_lr = self.optimizer.param_groups[0]['lr']
-                self.criterion.optimizer.param_groups[0]['lr'] = cur_lr
+                self.criterion.optimizer.param_groups[0]['lr'] = cur_lr * 10.
             print("\n===> epoch: {0}/{1}".format(epoch, self.config.epoch))
             self.train(epoch)
             test_result = self.test(epoch)
