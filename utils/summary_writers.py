@@ -44,9 +44,16 @@ class SummaryWriters(object):
 
         if isinstance(criterion, SRL_CELoss):
             if criterion.train_losses is not None:
-                for writer, t_loss, sample_rate in zip(self.class_summary_writers, criterion.train_losses, criterion.sample_rates):
+                for writer, t_loss in zip(self.class_summary_writers, criterion.train_losses):
                     writer.add_scalar('train_losses', normal_scalar(t_loss), global_step)
+
+            if criterion.sample_rates is not None:
+                for writer, sample_rate in zip(self.class_summary_writers, criterion.sample_rates):
                     writer.add_scalar('sample_rate', normal_scalar(sample_rate), global_step)
+
+            if criterion.alphas is not None:
+                for writer, alpha in zip(self.class_summary_writers, criterion.alphas):
+                    writer.add_scalar('alpha', normal_scalar(alpha), global_step)
 
             if criterion.val_losses is not None:
                 for writer, v_loss in zip(self.class_summary_writers, criterion.val_losses):
