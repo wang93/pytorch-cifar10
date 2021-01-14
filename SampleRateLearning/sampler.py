@@ -82,7 +82,10 @@ class SampleRateBatchSampler(SampleRateSampler):
         if self.cur_idx >= self.length:
             raise StopIteration
 
-        nums = [0 for _ in self.sample_rates]
+        nums = [None for _ in self.sample_rates]
+        indices = torch.multinomial(self.sample_rates, self.batch_size, replacement=True)
+        for i in range(len(self.sample_rates)):
+            nums[i] = sum(indices == i).item
 
         for _ in range(self.batch_size):
             i = torch.multinomial(self.sample_rates, 1)[0]
