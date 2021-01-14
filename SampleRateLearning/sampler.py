@@ -87,10 +87,6 @@ class SampleRateBatchSampler(SampleRateSampler):
         for i in range(len(self.sample_rates)):
             nums[i] = sum(indices == i).item()
 
-        for _ in range(self.batch_size):
-            i = torch.multinomial(self.sample_rates, 1)[0]
-            nums[i] += 1
-
         # nums = [round(self.batch_size*r) for r in self.sample_rates]
         # nums = [int(clip(n, 1, self.batch_size-1)) for n in nums]
 
