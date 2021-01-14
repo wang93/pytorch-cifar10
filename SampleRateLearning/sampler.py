@@ -83,7 +83,7 @@ class SampleRateBatchSampler(SampleRateSampler):
             raise StopIteration
 
         nums = [None for _ in self.sample_rates]
-        indices = torch.multinomial(self.sample_rates, self.batch_size, replacement=True)
+        indices = torch.multinomial(torch.tensor(self.sample_rates), self.batch_size, replacement=True)
         for i in range(len(self.sample_rates)):
             nums[i] = sum(indices == i).item()
 
