@@ -5,6 +5,7 @@ from torch.utils.data.sampler import Sampler
 
 from queue import Queue
 from random import sample as randsample
+import torch
 
 
 class SampleRateSampler(Sampler):
@@ -20,7 +21,7 @@ class SampleRateSampler(Sampler):
         else:
             # self.sample_rates = sample_rates.detach().cpu().numpy().tolist()
             sample_rates = sample_rates.detach()
-            sample_rates = sample_rates / sum(sample_rates)
+            # sample_rates = sample_rates / sum(sample_rates)
             self.sample_rates = sample_rates.cpu().numpy().tolist()
 
     def __iter__(self):
@@ -81,7 +82,13 @@ class SampleRateBatchSampler(SampleRateSampler):
         if self.cur_idx >= self.length:
             raise StopIteration
 
-        nums = [round(self.batch_size*r) for r in self.sample_rates]
+        nums = [0 for _ in self.sample_rates]
+
+        for _ in range(self.batch_size):
+            i = torch.multinomial(self.sample_rates, 1)[0]
+            nums[i] += 1
+
+        # nums = [round(self.batch_size*r) for r in self.sample_rates]
         # nums = [int(clip(n, 1, self.batch_size-1)) for n in nums]
 
         batch = []
