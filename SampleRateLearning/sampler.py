@@ -18,7 +18,10 @@ class SampleRateSampler(Sampler):
         if isinstance(sample_rates, list):
             self.sample_rates = sample_rates
         else:
-            self.sample_rates = sample_rates.detach().cpu().numpy().tolist()
+            # self.sample_rates = sample_rates.detach().cpu().numpy().tolist()
+            sample_rates = sample_rates.detach()
+            sample_rates = sample_rates / sum(sample_rates)
+            self.sample_rates = sample_rates.cpu().numpy().tolist()
 
     def __iter__(self):
         self.cur_idx = -1
