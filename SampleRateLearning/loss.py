@@ -134,7 +134,7 @@ class SRL_CELoss(nn.Module):
 
         # adjust sample_rates
         if isinstance(self.sample_rates, torch.Tensor):
-            grad = - self.val_losses.detach()
+            grad = self.val_losses.detach().mean() - self.val_losses.detach()
             self.sample_rates.backward(grad)
             self.optimizer.step()
             self.optimizer.zero_grad(set_to_none=True)
