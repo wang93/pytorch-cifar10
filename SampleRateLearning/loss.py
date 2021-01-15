@@ -5,7 +5,8 @@ from .sampler import SampleRateSampler, SampleRateBatchSampler
 
 
 def get_rates(alphas):
-    return (alphas / 2.).softmax(dim=0)
+    T = 1.
+    return (alphas / T).softmax(dim=0)
     # return alphas.sigmoid()
 
     # intensities = nn.ELU()(alphas) + 1.
