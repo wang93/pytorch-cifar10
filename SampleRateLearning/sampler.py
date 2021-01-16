@@ -7,36 +7,6 @@ from queue import Queue
 from random import sample as randsample
 import torch
 
-
-class SampleRateSampler(Sampler):
-    def __init__(self, data_source):
-        super(SampleRateSampler, self).__init__(data_source)
-        self.data_source = data_source
-        self.sample_rates = None
-        self.sample_num_per_epoch = len(data_source)
-
-    def update(self, sample_rates):
-        if isinstance(sample_rates, list):
-            self.sample_rates = sample_rates
-        else:
-            # self.sample_rates = sample_rates.detach().cpu().numpy().tolist()
-            sample_rates = sample_rates.detach()
-            # sample_rates = sample_rates / sum(sample_rates)
-            self.sample_rates = sample_rates.cpu().numpy().tolist()
-
-    def __iter__(self):
-        self.cur_idx = -1
-        return self
-
-    def __next__(self):
-        raise NotImplementedError
-
-    next = __next__  # Python 2 compatibility
-
-    def __len__(self):
-        return self.sample_num_per_epoch
-
-
 class _HalfQueue(object):
     def __init__(self, elements: list, margin):
         self.recent = Queue(maxsize=margin)
@@ -61,9 +31,12 @@ class _HalfQueue(object):
         return res
 
 
-class SampleRateBatchSampler(SampleRateSampler):
+class SampleRateBatchSampler(Sampler):
     def __init__(self, data_source, batch_size=1):
         super(SampleRateBatchSampler, self).__init__(data_source)
+        self.data_source = data_source
+        self.sample_rates = None
+        self.sample_num_per_epoch = len(data_source)
         self.batch_size = batch_size
         indices = [[] for _ in range(len(data_source.classes))]
         for i, t in enumerate(data_source.targets):
@@ -76,6 +49,21 @@ class SampleRateBatchSampler(SampleRateSampler):
             total_indices.extend(idxs)
 
         self.instance_wise_sample_agent = _HalfQueue(total_indices, len(total_indices)-1)
+
+    def update(self, sample_rates):
+        if isinstance(sample_rates, list):
+            self.sample_rates = sample_rates
+        else:
+            # self.sample_rates = sample_rates.detach().cpu().numpy().tolist()
+            sample_rates = sample_rates.detach()
+            # sample_rates = sample_rates / sum(sample_rates)
+            self.sample_rates = sample_rates.cpu().numpy().tolist()
+
+    def __iter__(self):
+        self.cur_idx = -1
+        return self
+
+    next = __next__  # Python 2 compatibility
 
     def __next__(self):
         self.cur_idx += 1
