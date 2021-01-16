@@ -7,6 +7,7 @@ from queue import Queue
 from random import sample as randsample
 import torch
 
+
 class _HalfQueue(object):
     def __init__(self, elements: list, margin):
         self.recent = Queue(maxsize=margin)
@@ -63,8 +64,6 @@ class SampleRateBatchSampler(Sampler):
         self.cur_idx = -1
         return self
 
-    next = __next__  # Python 2 compatibility
-
     def __next__(self):
         self.cur_idx += 1
         if self.cur_idx >= self.length:
@@ -83,6 +82,8 @@ class SampleRateBatchSampler(Sampler):
             batch.extend(agent.select(num))
 
         return batch
+
+    next = __next__  # Python 2 compatibility
 
     def __len__(self):
         return self.length
