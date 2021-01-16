@@ -1,7 +1,7 @@
 from torch import nn
 import torch
 from torch.optim import SGD, Adam, AdamW, RMSprop
-from .sampler import SampleRateSampler, SampleRateBatchSampler
+from .sampler import SampleRateBatchSampler
 
 
 def get_rates(alphas):
@@ -15,7 +15,7 @@ def get_rates(alphas):
 
 
 class SRL_CELoss(nn.Module):
-    def __init__(self, sampler: SampleRateSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
+    def __init__(self, sampler: SampleRateBatchSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
                  sample_rates=None, precision_super=False):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
