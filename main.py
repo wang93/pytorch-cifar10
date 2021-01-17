@@ -19,7 +19,8 @@ CLASSES = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 
 
 def main():
-    parser = argparse.ArgumentParser(description="cifar-10 with PyTorch")
+    parser = argparse.ArgumentParser(description="cifar with PyTorch")
+    parser.add_argument('--dataset', default='cifar-10', type=str, help='dataset name')
     parser.add_argument('--lr', default=0.001, type=float, help='learning rate')
     parser.add_argument('--gamma', default=0.1, type=float, help='learning-rate-decay factor')
     parser.add_argument('--milestones', '-ms', default='[75,150]', type=str, help='milestones in lr schedule')
@@ -28,9 +29,11 @@ def main():
     parser.add_argument('--trainBatchSize', default=100, type=int, help='training batch size')
     parser.add_argument('--testBatchSize', default=100, type=int, help='testing batch size')
     parser.add_argument('--gpus', default='[0]', type=str, help='gpu devices to be used')
-    parser.add_argument('--classes', '-c', default='[0,1,2,3,4,5,6,7,8,9]', type=str, help='classes to be considered')
-    parser.add_argument('--sub_sample', '-s', default='[1.,1.,1.,1.,1.,1.,1.,1.,1.,1.]',
+    parser.add_argument('--classes', '-c', default=None, type=str, help='classes to be considered')
+    parser.add_argument('--sub_sample', '-s', default=None,
                         type=str, help='sub sample ratio of each class')
+    parser.add_argument('--imbalance_rate', '-ir', default=None,
+                        type=float, help='max(nums)/min(nums)')
     parser.add_argument('--exp', default='temp', type=str, help='experiment name')
     parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
     parser.add_argument('--dtype', default='float', type=str, help='dtype of parameters and buffers')
@@ -50,6 +53,35 @@ def main():
     parser.add_argument("--final_zero", action="store_true", help="set params in the final layer to zero")
     args = parser.parse_args()
 
+    if args.classes is None:
+        if args.dataset == 'cifar-10':
+            args.classes = list(range(10))
+        elif args.dataset == 'cifar-100':
+            args.classes = list(range(100))
+        else:
+            raise NotImplementedError
+    else:
+        args.classes = eval(args.classes)
+
+    if args.sub_sample is None:
+        if args.dataset == 'cifar-10':
+            args.sub_sample = [1. for _ in range(10)]
+        elif args.dataset == 'cifar-100':
+            args.sub_sample = [1. for _ in range(100)]
+        else:
+            raise NotImplementedError
+    else:
+        args.sub_sample = eval(args.sub_sample)
+
+    if args.imbalance_rate is not None:
+        num_classes = len(args.classes)
+        r = args.imbalance_rate ** (1/(1-num_classes))
+        sub_sample = []
+        for i in range(num_classes):
+            sub_sample.append(r**i)
+        args.sub_sample = sub_sample
+
+
     if args.srl and args.val_ratio <= 0.:
         args.srl_in_train = True
 
@@ -60,8 +92,6 @@ def main():
     if args.sample_rates is not None:
         args.sample_rates = eval(args.sample_rates)
 
-    args.classes = eval(args.classes)
-    args.sub_sample = eval(args.sub_sample)
     args.milestones = eval(args.milestones)
 
     prepare_running(args)
@@ -143,7 +173,12 @@ class Solver(object):
                                               normalize])
         test_transform = transforms.Compose([transforms.ToTensor(), normalize])
 
-        train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
+        if self.config.dataset == 'cifar-10':
+            train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
+        elif self.config.dataset == 'cifar-100':
+            train_set = torchvision.datasets.CIFAR100(root='./data', train=True, download=True, transform=train_transform)
+        else:
+            raise NotImplementedError
         train_set = self._sub_data(train_set, self.config.classes, self.config.sub_sample)
         train_set, val_set = self._split_data(train_set, test_transform, self.config.val_ratio)
 
@@ -171,7 +206,12 @@ class Solver(object):
                                                             shuffle=True)
             self.criterion = nn.CrossEntropyLoss().cuda()
 
-        test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
+        if self.config.dataset == 'cifar-10':
+            test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
+        elif self.config.dataset == 'cifar-100':
+            test_set = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=test_transform)
+        else:
+            raise NotImplementedError
         self._sub_data(test_set, self.config.classes)
         self.test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=self.config.testBatchSize, shuffle=False)
 
