@@ -49,7 +49,7 @@ class SampleRateBatchSampler(Sampler):
         for idxs in indices:
             total_indices.extend(idxs)
 
-        self.instance_wise_sample_agent = _HalfQueue(total_indices, len(total_indices)-1)
+        # self.instance_wise_sample_agent = _HalfQueue(total_indices, len(total_indices)-1)
 
     def update(self, sample_rates):
         if isinstance(sample_rates, list):
