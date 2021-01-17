@@ -49,7 +49,7 @@ class SampleRateBatchSampler(Sampler):
         indices = [[] for _ in range(len(data_source.classes))]
         for i, t in enumerate(data_source.targets):
             indices[t].append(i)
-        self.sample_agents = [_HalfQueue(sub_indices, batch_size) for sub_indices in indices]
+        self.sample_agents = [_HalfQueue(sub_indices) for sub_indices in indices]
         self.length = (self.sample_num_per_epoch + self.batch_size - 1) // self.batch_size
 
         total_indices = []
@@ -110,7 +110,7 @@ class ValidationBatchSampler(Sampler):
         if self.batch_size % num_classes != 0:
             raise ValueError
         self.num = self.batch_size // num_classes
-        self.sample_agents = [_HalfQueue(sub_indices, self.num) for sub_indices in c2i]
+        self.sample_agents = [_HalfQueue(sub_indices) for sub_indices in c2i]
 
     def __next__(self):
         batch = []
