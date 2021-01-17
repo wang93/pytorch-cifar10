@@ -110,7 +110,7 @@ class Solver(object):
         self.val_loader = None
         self.test_loader = None
         self.final_bn = None
-        self.recorder = SummaryWriters(self.config, [CLASSES[c] for c in self.config.classes])
+        self.recorder = SummaryWriters(self.config, len(self.config.classes))
         global_variables.classes_num = len(self.config.classes)
         global_variables.train_batch_size = self.config.trainBatchSize
 

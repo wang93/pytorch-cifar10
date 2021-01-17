@@ -20,7 +20,7 @@ def normal_scalar(v):
 
 
 class SummaryWriters(object):
-    def __init__(self, opt, classes):
+    def __init__(self, opt, class_num):
         exp_dir = pjoin('./exps', opt.exp, 'tensorboard_log')
         self.summary_writer = SummaryWriter(pjoin(exp_dir, 'common'))
         self.max_summary_writer = SummaryWriter(pjoin(exp_dir, 'max'))
@@ -28,7 +28,7 @@ class SummaryWriters(object):
         self.avg_summary_writer = SummaryWriter(pjoin(exp_dir, 'avg'))
 
         self.class_summary_writers = []
-        class_num = len(classes)
+
         for i in range(class_num):
             self.class_summary_writers.append(SummaryWriter(pjoin(exp_dir, str(i))))
 
