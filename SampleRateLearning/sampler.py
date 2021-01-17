@@ -1,33 +1,40 @@
 from __future__ import absolute_import
-
-from numpy import clip
 from torch.utils.data.sampler import Sampler
-
 from queue import Queue
 from random import sample as randsample
 import torch
+from random import shuffle
+from copy import deepcopy
 
 
 class _HalfQueue(object):
-    def __init__(self, elements: list, margin):
-        self.recent = Queue(maxsize=margin)
-        self.selection_pool = set(elements)
+    def __init__(self, elements: list):
+        self.recent = Queue(maxsize=len(elements))
+        shuffle(elements)
+        self.elements = elements
+        self.queue = deepcopy(elements)
+        #self.selection_pool = set(elements)
 
-    def _update(self, new_element):
-        self.selection_pool.remove(new_element)
-
-        if self.recent.full() or len(self.selection_pool) == 0:
-            old_element = self.recent.get()
-            self.selection_pool.add(old_element)
-
-        self.recent.put(new_element)
+    # def _update(self, new_element):
+    #     self.selection_pool.remove(new_element)
+    #
+    #     if self.recent.full() or len(self.selection_pool) == 0:
+    #         old_element = self.recent.get()
+    #         self.selection_pool.add(old_element)
+    #
+    #     self.recent.put(new_element)
 
     def select(self, num):
         res = []
         for i in range(num):
-            e = randsample(self.selection_pool, 1)[0]
-            res.append(e)
-            self._update(e)
+            if len(self.queue) > 0:
+                e = self.queue.pop()
+                res.append(e)
+            else:
+                self.queue = deepcopy(self.elements)
+                shuffle(self.queue)
+                e = self.queue.pop()
+                res.append(e)
 
         return res
 
