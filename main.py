@@ -277,6 +277,9 @@ class Solver(object):
         elif self.config.optim == 'adammw':
             from utils.optimizers import AdamMW
             self.optimizer = AdamMW(self.model.parameters(), lr=self.config.lr, weight_decay=0.)
+        elif optim == 'rmsprop2':
+            from utils.optimizers import RMSprop2
+            self.optimizer = RMSprop2(self.model.parameters(), lr=self.config.lr, alpha=0.999, eps=1e-8, weight_decay=0.)
         else:
             raise NotImplementedError
 
