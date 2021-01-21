@@ -260,8 +260,8 @@ class AdamMW(AdamW):
                     cur_beta1 = beta1
                     cur_beta2 = beta2
                 else:
-                    cur_beta1 = beta1 / state['step'] * (t - 1)
-                    cur_beta2 = beta2 / state['step'] * (t - 1)
+                    cur_beta1 = beta1 * (state['step'] - 1) / t
+                    cur_beta2 = beta2 * (state['step'] - 1) / t
                 # cur_beta1 = beta1 - (beta1 ** state['step'])
                 # cur_beta2 = beta2 - (beta2 ** state['step'])
 
