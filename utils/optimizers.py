@@ -193,7 +193,7 @@ class SAdam(Adam):
 
 
 class AdamMW(AdamW):
-    def __init__(self, params, lr=1e-3, betas=(0.9, 0.9), eps=1e-8,
+    def __init__(self, params, lr=1e-3, betas=(0.9, 0.999), eps=1e-8,
                  weight_decay=1e-2, amsgrad=False):
         if not 0.0 <= lr:
             raise ValueError("Invalid learning rate: {}".format(lr))
@@ -255,8 +255,15 @@ class AdamMW(AdamW):
                 beta1, beta2 = group['betas']
 
                 state['step'] += 1
-                cur_beta1 = beta1 - (beta1 ** state['step'])
-                cur_beta2 = beta2 - (beta2 ** state['step'])
+                t = 100
+                if state['step'] > t:
+                    cur_beta1 = beta1
+                    cur_beta2 = beta2
+                else:
+                    cur_beta1 = beta1 / state['step'] * (t - 1)
+                    cur_beta2 = beta2 / state['step'] * (t - 1)
+                # cur_beta1 = beta1 - (beta1 ** state['step'])
+                # cur_beta2 = beta2 - (beta2 ** state['step'])
 
                 # Decay the first and second moment running average coefficient
                 exp_avg.mul_(cur_beta1).add_(grad, alpha=1 - cur_beta1)
