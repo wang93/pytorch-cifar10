@@ -389,48 +389,48 @@ class Solver(object):
 
         print('accuracy:'.ljust(19) + '{:.2f}%'.format(100. * accuracy))
 
-        # sample_nums = cm.sum(axis=1)  # for precision
-        #
-        # hitted_nums = cm.diagonal()
-        # precisions = hitted_nums.astype(float) / sample_nums.astype(float)
-        #
-        # s = 'precisions:'.ljust(19)
-        # for p in precisions:
-        #     s += '{:.1f}%, '.format(p * 100)
-        # print(s)
-        #
-        # average_precision = sum(precisions) / len(precisions)
-        # print('average precision:'.ljust(19) + '{:.2f}%'.format(average_precision * 100))
-        #
-        # worst_precision = min(precisions)
-        #
-        # print('worst precision:'.ljust(19) + '{:.1f}%'.format(worst_precision * 100))
-
-        sample_nums = cm.sum(axis=0)  # for recall
+        sample_nums = cm.sum(axis=1)  # for precision
 
         hitted_nums = cm.diagonal()
-        recalls = hitted_nums.astype(float) / sample_nums.astype(float)
+        precisions = hitted_nums.astype(float) / sample_nums.astype(float)
 
-        s = 'recalls:'.ljust(19)
-        for p in recalls:
+        s = 'precisions:'.ljust(19)
+        for p in precisions:
             s += '{:.1f}%, '.format(p * 100)
         print(s)
 
-        average_recall = sum(recalls) / len(recalls)
-        print('average recall:'.ljust(19) + '{:.2f}%'.format(average_recall * 100))
+        average_precision = sum(precisions) / len(precisions)
+        print('average precision:'.ljust(19) + '{:.2f}%'.format(average_precision * 100))
 
-        worst_recall = min(recalls)
+        worst_precision = min(precisions)
 
-        print('worst recall:'.ljust(19) + '{:.1f}%'.format(worst_recall * 100))
+        print('worst precision:'.ljust(19) + '{:.1f}%'.format(worst_precision * 100))
+
+        # sample_nums = cm.sum(axis=0)  # for recall
+        #
+        # hitted_nums = cm.diagonal()
+        # recalls = hitted_nums.astype(float) / sample_nums.astype(float)
+        #
+        # s = 'recalls:'.ljust(19)
+        # for p in recalls:
+        #     s += '{:.1f}%, '.format(p * 100)
+        # print(s)
+        #
+        # average_recall = sum(recalls) / len(recalls)
+        # print('average recall:'.ljust(19) + '{:.2f}%'.format(average_recall * 100))
+        #
+        # worst_recall = min(recalls)
+        #
+        # print('worst recall:'.ljust(19) + '{:.1f}%'.format(worst_recall * 100))
 
         iter_num_per_epoch = len(self.train_loader)
         global_step = epoch * iter_num_per_epoch
 
-        # self.recorder.record_epoch(accuracy, precisions, global_step)
-        self.recorder.record_epoch(accuracy, recalls, global_step)
+        self.recorder.record_epoch(accuracy, precisions, global_step)
+        # self.recorder.record_epoch(accuracy, recalls, global_step)
 
-        # return test_loss, test_correct / total, worst_precision
-        return test_loss, test_correct / total, worst_recall
+        return test_loss, test_correct / total, worst_precision
+        # return test_loss, test_correct / total, worst_recall
 
     def save(self):
         model_out_path = join('./exps', self.config.exp, "model.pth")
