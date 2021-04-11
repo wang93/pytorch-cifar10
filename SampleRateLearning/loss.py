@@ -118,15 +118,21 @@ class SRL_CELoss(nn.Module):
         labels = labels.to(dtype=torch.long).view(-1)
         if self.precision_super:
             scores = scores.softmax(dim=1)
-            scores = scores[list(range(scores.size(0))), labels]
-            losses = (scores < 0.5).to(dtype=torch.float)
+            # scores = scores[list(range(scores.size(0))), labels]
+            # losses = (scores < 0.5).to(dtype=torch.float)
+            predictions = torch.argmax(scores, dim=1, keepdim=False)
+            losses = (predictions != labels).to(dtype=torch.float)
         else:
+            raise NotImplementedError
             losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
 
         self.val_losses = []
         for i in range(self.num_classes):
-            cur_mask = (labels == i)
+            # cur_mask = (labels == i)
+            cur_mask = (predictions == i)
             cur_losses = losses[cur_mask]
+            if len(cur_losses) == 0:
+                raise NotImplementedError
             cur_loss = cur_losses.mean()
             self.val_losses.append(cur_loss)
         self.val_losses = torch.Tensor(self.val_losses).cuda()
