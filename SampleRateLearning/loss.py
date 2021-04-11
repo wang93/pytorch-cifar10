@@ -132,7 +132,7 @@ class SRL_CELoss(nn.Module):
             cur_mask = (predictions == i)
             cur_losses = losses[cur_mask]
             if len(cur_losses) == 0:
-                cur_loss = torch.Tensor(1.).cuda()
+                cur_loss = torch.tensor(1.).cuda()
             else:
                 cur_loss = cur_losses.mean()
             self.val_losses.append(cur_loss)
