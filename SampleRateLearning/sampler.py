@@ -76,12 +76,12 @@ class SampleRateBatchSampler(Sampler):
         if self.cur_idx >= self.length:
             raise StopIteration
 
-        nums = [None for _ in self.sample_rates]
-        indices = torch.multinomial(torch.tensor(self.sample_rates), self.batch_size, replacement=True)
-        for i in range(len(self.sample_rates)):
-            nums[i] = sum(indices == i).item()
+        # nums = [None for _ in self.sample_rates]
+        # indices = torch.multinomial(torch.tensor(self.sample_rates), self.batch_size, replacement=True)
+        # for i in range(len(self.sample_rates)):
+        #     nums[i] = sum(indices == i).item()
 
-        # nums = [round(self.batch_size*r) for r in self.sample_rates]
+        nums = [round(self.batch_size*r) for r in self.sample_rates]
         # nums = [int(clip(n, 1, self.batch_size-1)) for n in nums]
 
         batch = []
