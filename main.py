@@ -389,7 +389,7 @@ class Solver(object):
 
         print('accuracy:'.ljust(19) + '{:.2f}%'.format(100. * accuracy))
 
-        sample_nums = cm.sum(axis=1)  # for precision
+        sample_nums = cm.sum(axis=0)  # for precision
 
         hitted_nums = cm.diagonal()
         precisions = hitted_nums.astype(float) / sample_nums.astype(float)
@@ -406,7 +406,7 @@ class Solver(object):
 
         print('worst precision:'.ljust(19) + '{:.1f}%'.format(worst_precision * 100))
 
-        # sample_nums = cm.sum(axis=0)  # for recall
+        # sample_nums = cm.sum(axis=1)  # for recall
         #
         # hitted_nums = cm.diagonal()
         # recalls = hitted_nums.astype(float) / sample_nums.astype(float)

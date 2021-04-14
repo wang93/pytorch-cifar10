@@ -113,7 +113,6 @@ class SRL_CELoss(nn.Module):
         self.val_losses = None
 
     def forward2(self, scores, labels: torch.Tensor):
-
         # losses, labels = self.get_losses(scores, labels)
         labels = labels.to(dtype=torch.long).view(-1)
         if self.precision_super:
