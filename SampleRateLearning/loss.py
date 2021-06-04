@@ -129,12 +129,20 @@ class SRL_CELoss(nn.Module):
         for i in range(self.num_classes):
             # cur_mask = (labels == i)
             cur_mask = (predictions == i)
-            cur_losses = losses[cur_mask]
-            if len(cur_losses) == 0:
-                cur_loss = torch.tensor(1.).cuda()
+            cur_precisions = 1. - losses[cur_mask]
+            cur_mask = (labels == i)
+            cur_recalls = 1. - losses[cur_mask]
+            if len(cur_precisions) == 0:
+                cur_precision = torch.tensor(0.).cuda()
             else:
-                cur_loss = cur_losses.mean()
-            self.val_losses.append(cur_loss)
+                cur_precision = cur_precisions.mean()
+            if len(cur_recalls) == 0:
+                cur_recall = torch.tensor(0.).cuda()
+            else:
+                cur_recall = cur_recalls.mean()
+
+            cur_f1 = 2*cur_precision*cur_recall/(cur_precision+cur_recall)
+            self.val_losses.append(1.-cur_f1)
         self.val_losses = torch.Tensor(self.val_losses).cuda()
 
         loss = losses.mean()
