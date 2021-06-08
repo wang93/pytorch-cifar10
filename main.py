@@ -365,7 +365,7 @@ class Solver(object):
         test_correct = 0
         total = 0
         class_num = len(self.config.classes)
-        cm = np.zeros((class_num, class_num), dtype=np.int)
+        cm = np.zeros((class_num, class_num), dtype=int)
 
         with torch.no_grad():
             for batch_num, (data, target) in enumerate(self.test_loader):
