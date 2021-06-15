@@ -133,6 +133,7 @@ class SRL_CELoss(nn.Module):
             union = torch.bitwise_or(prediction_mask, label_mask).to(dtype=torch.float).sum()
 
             if union == 0:
+                print('union=0')
                 iou = 0.
             else:
                 iou = intersection / union
