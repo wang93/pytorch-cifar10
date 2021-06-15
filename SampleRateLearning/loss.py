@@ -127,30 +127,46 @@ class SRL_CELoss(nn.Module):
 
         self.val_losses = []
         for i in range(self.num_classes):
-            # cur_mask = (labels == i)
-            cur_mask = (predictions == i)
-            cur_precisions = 1. - losses[cur_mask]
-            cur_mask = (labels == i)
-            cur_recalls = 1. - losses[cur_mask]
-            if len(cur_precisions) == 0:
-                print('hit1')
-                cur_precision = torch.tensor(0.5).cuda()
-            else:
-                cur_precision = cur_precisions.mean()
-            if len(cur_recalls) == 0:
-                print('hit2')
-                cur_recall = torch.tensor(0.5).cuda()
-            else:
-                cur_recall = cur_recalls.mean()
+            prediction_mask = (predictions == i)
+            label_mask = (labels == i)
+            intersection = torch.bitwise_and(prediction_mask, label_mask).to(dtype=torch.float).sum()
+            union = torch.bitwise_or(prediction_mask, label_mask).to(dtype=torch.float).sum()
 
-            cur_f1 = 2*cur_precision*cur_recall/(cur_precision+cur_recall+0.0001)
+            if union == 0:
+                iou = 0.
+            else:
+                iou = intersection / union
+
+            self.val_losses.append(iou)
+
+            # cur_mask = (predictions == i)
+            # cur_precisions = 1. - losses[cur_mask]
+            # cur_mask = (labels == i)
+            # cur_recalls = 1. - losses[cur_mask]
+            # if len(cur_precisions) == 0:
+            #     print('precision of the {0}th class can not be computed!'.format(i))
+            #     cur_precision = torch.tensor(0.5).cuda()
+            # else:
+            #     cur_precision = cur_precisions.mean()
+            # if len(cur_recalls) == 0:
+            #     print('hit2')
+            #     cur_recall = torch.tensor(0.5).cuda()
+            # else:
+            #     cur_recall = cur_recalls.mean()
+            #
+            # cur_f1 = 2*cur_precision*cur_recall/(cur_precision+cur_recall+0.0001)
+
+            # cur_f1 = (cur_precision * cur_recall).sqrt()
             # print(cur_precision)
             # print(cur_recall)
             # print('---------------')
-            self.val_losses.append(1.-cur_f1)
+
+            # self.val_losses.append(1.-cur_f1)
         self.val_losses = torch.Tensor(self.val_losses).cuda()
 
         loss = losses.mean()
+        if torch.isnan(loss):
+            raise ValueError
 
         # adjust sample_rates
         if isinstance(self.sample_rates, torch.Tensor):

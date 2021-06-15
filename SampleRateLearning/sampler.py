@@ -5,6 +5,7 @@ from random import sample as randsample
 import torch
 from random import shuffle
 from copy import deepcopy
+from numpy import clip
 
 
 class _HalfQueue(object):
