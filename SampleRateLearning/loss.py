@@ -138,7 +138,7 @@ class SRL_CELoss(nn.Module):
             else:
                 iou = intersection / union
 
-            self.val_losses.append(iou)
+            self.val_losses.append(1.-iou)
 
             # cur_mask = (predictions == i)
             # cur_precisions = 1. - losses[cur_mask]
