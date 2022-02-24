@@ -50,7 +50,7 @@ def main():
     parser.add_argument('--warmup_till', '-wt', default=1, type=int, help='version of stable bn')
     parser.add_argument('--warmup_mode', '-wm', default='const', type=str, help='version of stable bn')
     parser.add_argument("--weight_center", '-wc', action="store_true", help="centralize all the weights")
-    parser.add_argument("--final_bn", default=-1., type=float, help='momentum of final bn')
+    #parser.add_argument("--final_bn", default=-1., type=float, help='momentum of final bn')
     parser.add_argument("--final_zero", action="store_true", help="set params in the final layer to zero")
     args = parser.parse_args()
 
@@ -109,7 +109,6 @@ class Solver(object):
         self.train_loader = None
         self.val_loader = None
         self.test_loader = None
-        self.final_bn = None
         self.recorder = SummaryWriters(self.config, len(self.config.classes))
         global_variables.classes_num = len(self.config.classes)
         global_variables.train_batch_size = self.config.trainBatchSize
@@ -278,10 +277,6 @@ class Solver(object):
             if final_fc.bias is not None:
                 final_fc.bias.data = torch.zeros_like(final_fc.bias.data)
 
-        if self.config.final_bn > 0.:
-            from SampleRateLearning.special_batchnorm.batchnorm41 import BatchNorm1d as final_bn1d
-            self.final_bn = nn.DataParallel(final_bn1d(base_momentum=self.config.final_bn)).cuda()
-
         if self.config.optim == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.config.lr)
         elif self.config.optim == 'sgd':
@@ -325,13 +320,9 @@ class Solver(object):
             else:
                 self.model.train()
 
-            if self.final_bn is not None:
-                self.final_bn.train()
             self.criterion.eval()
             self.optimizer.zero_grad()
             output = self.model(data)
-            if self.final_bn is not None:
-                output = self.final_bn(output)
             loss = self.criterion(output, target)
             loss.backward()
             self.optimizer.step()
@@ -339,8 +330,6 @@ class Solver(object):
             # srl
             if self.config.srl_start < epoch:
                 self.model.eval()
-                if self.final_bn is not None:
-                    self.final_bn.eval()
                 self.criterion.train()
                 val_data, val_target = self.val_loader.next()
                 if self.config.dtype == 'double':
@@ -348,8 +337,6 @@ class Solver(object):
                 val_data, val_target = val_data.cuda(), val_target.cuda()
                 with torch.no_grad():
                     val_output = self.model(val_data)
-                    if self.final_bn is not None:
-                        val_output = self.final_bn(val_output)
                 self.criterion(val_output, val_target)
 
             train_loss += loss.item()
@@ -375,8 +362,6 @@ class Solver(object):
 
     def test(self, epoch):
         self.model.eval()
-        if self.final_bn is not None:
-            self.final_bn.eval()
         if isinstance(self.criterion, nn.Module):
             self.criterion.eval()
 
@@ -392,8 +377,6 @@ class Solver(object):
                     data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
                 data, target = data.cuda(), target.cuda()
                 output = self.model(data)
-                if self.final_bn is not None:
-                    output = self.final_bn(output)
                 loss = self.criterion(output, target)
                 test_loss += loss.item()
                 _, prediction = torch.max(output, 1)
