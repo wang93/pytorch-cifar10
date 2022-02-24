@@ -45,7 +45,7 @@ def main():
     parser.add_argument('--srl_start', default=9999, type=int, help='start srl after which epoch')
     parser.add_argument('--sample_rates', default=None, type=str, help='sample rates in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
-    parser.add_argument('--valBatchSize', '-vb', default=16, type=int, help='validation batch size')
+    parser.add_argument('--valBatchSize', '-vb', default=32, type=int, help='validation batch size')
     parser.add_argument('--special_bn', default=-1, type=int, help='version of stable bn')
     parser.add_argument('--warmup_till', '-wt', default=1, type=int, help='version of stable bn')
     parser.add_argument('--warmup_mode', '-wm', default='const', type=str, help='version of stable bn')
