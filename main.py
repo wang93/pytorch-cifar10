@@ -229,6 +229,7 @@ class Solver(object):
                                   optim=self.config.srl_optim,
                                   lr=max(self.config.srl_lr, 0),
                                   sample_rates=self.config.sample_rates,
+                                  in_train = self.config.srl_in_train,
                                   ).cuda()
 
     def load_model(self):

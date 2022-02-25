@@ -17,7 +17,7 @@ def get_rates(alphas):
 
 class SRL_CELoss(nn.Module):
     def __init__(self, sampler: SampleRateBatchSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
-                 sample_rates=None):
+                 sample_rates=None, in_train=False):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
@@ -28,6 +28,8 @@ class SRL_CELoss(nn.Module):
         self.num_classes = len(sampler.sample_agents)
 
         self.alphas = nn.Parameter(torch.zeros(self.num_classes).cuda())
+
+        self.in_train = in_train
 
         param_groups = [{'params': [self.alphas]}]
         if optim == "sgd":
@@ -113,8 +115,6 @@ class SRL_CELoss(nn.Module):
 
     def forward2(self, scores, labels: torch.Tensor):
         # losses, labels = self.get_losses(scores, labels)
-        labels = labels.to(dtype=torch.long).view(-1)
-
         scores = scores.softmax(dim=1)
         predictions = torch.argmax(scores, dim=1, keepdim=False)
         losses = (predictions != labels).to(dtype=torch.float)
@@ -193,12 +193,40 @@ class SRL_CELoss(nn.Module):
         return loss
 
     def forward(self, scores, labels: torch.Tensor):
+        labels = labels.to(dtype=torch.long).view(-1)
 
         if self.training:
-            return self.forward2(scores, labels)
+            if not self.in_train:
+                return self.forward2(scores, labels)
+            else:
+                losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
+                self.train_losses = []
+                for i in range(self.num_classes):
+                    cur_mask = (labels == i)
+                    cur_losses = losses[cur_mask]
+                    cur_loss = cur_losses.mean()
+                    self.train_losses.append(cur_loss)
+
+                self.train_losses = torch.Tensor(self.train_losses).cuda()
+
+                # adjust sample_rates
+                if isinstance(self.sample_rates, torch.Tensor):
+                    grad = self.train_losses.detach().mean() - self.train_losses.detach()
+                    self.sample_rates.backward(grad)
+                    self.optimizer.step()
+                    self.optimizer.zero_grad(set_to_none=True)
+                    # self.sample_rates = self.alphas.softmax(dim=0)
+                    self.sample_rates = get_rates(self.alphas)
+                    self.sampler.update(self.sample_rates)
+
+                loss = losses.mean()
+
+                return loss
+
+
 
         # losses, labels = self.get_losses(scores, labels)
-        labels = labels.to(dtype=torch.long).view(-1)
+
         losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
 
         self.train_losses = []
