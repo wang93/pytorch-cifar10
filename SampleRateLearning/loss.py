@@ -116,30 +116,36 @@ class SRL_CELoss(nn.Module):
         # losses, labels = self.get_losses(scores, labels)
         labels = labels.to(dtype=torch.long).view(-1)
         if self.precision_super:
-            scores = scores.softmax(dim=1)
-            # scores = scores[list(range(scores.size(0))), labels]
-            # losses = (scores < 0.5).to(dtype=torch.float)
-            predictions = torch.argmax(scores, dim=1, keepdim=False)
-            losses = (predictions != labels).to(dtype=torch.float)
+            # scores = scores.softmax(dim=1)
+            # predictions = torch.argmax(scores, dim=1, keepdim=False)
+            # losses = (predictions != labels).to(dtype=torch.float)
+            losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
         else:
             raise NotImplementedError
             losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
 
         self.val_losses = []
         for i in range(self.num_classes):
-            prediction_mask = (predictions == i)
-            label_mask = (labels == i)
-            intersection = torch.bitwise_and(prediction_mask, label_mask).to(dtype=torch.float).sum()
-            union = torch.bitwise_or(prediction_mask, label_mask).to(dtype=torch.float).sum()
+            # iou criterion
+            # prediction_mask = (predictions == i)
+            # label_mask = (labels == i)
+            # intersection = torch.bitwise_and(prediction_mask, label_mask).to(dtype=torch.float).sum()
+            # union = torch.bitwise_or(prediction_mask, label_mask).to(dtype=torch.float).sum()
+            # if union == 0:
+            #     print('union=0')
+            #     iou = 0.
+            # else:
+            #     iou = intersection / union
+            # self.val_losses.append(1.-iou)
 
-            if union == 0:
-                print('union=0')
-                iou = 0.
-            else:
-                iou = intersection / union
+            # CE loss criterion
+            cur_mask = (labels == i)
+            cur_losses = losses[cur_mask]
+            cur_loss = cur_losses.mean()
+            self.val_losses.append(cur_loss)
 
-            self.val_losses.append(1.-iou)
 
+            # F1 score criterion
             # cur_mask = (predictions == i)
             # cur_precisions = 1. - losses[cur_mask]
             # cur_mask = (labels == i)

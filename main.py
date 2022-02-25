@@ -38,7 +38,6 @@ def main():
     parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
     parser.add_argument('--dtype', default='float', type=str, help='dtype of parameters and buffers')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
-    # parser.add_argument("--srl", action="store_true", help="sample rate learning or not.")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
     parser.add_argument("--srl_precision", '-ssp', action="store_true", help="srl according to soft precision")
@@ -50,7 +49,6 @@ def main():
     parser.add_argument('--warmup_till', '-wt', default=1, type=int, help='version of stable bn')
     parser.add_argument('--warmup_mode', '-wm', default='const', type=str, help='version of stable bn')
     parser.add_argument("--weight_center", '-wc', action="store_true", help="centralize all the weights")
-    #parser.add_argument("--final_bn", default=-1., type=float, help='momentum of final bn')
     parser.add_argument("--final_zero", action="store_true", help="set params in the final layer to zero")
     args = parser.parse_args()
 
