@@ -229,7 +229,7 @@ class Solver(object):
                                   optim=self.config.srl_optim,
                                   lr=max(self.config.srl_lr, 0),
                                   sample_rates=self.config.sample_rates,
-                                  in_train = self.config.srl_in_train,
+                                  in_train=self.config.srl_in_train,
                                   ).cuda()
 
     def load_model(self):
@@ -323,7 +323,12 @@ class Solver(object):
             else:
                 self.model.train()
 
-            self.criterion.eval()
+            if self.config.srl_start < epoch and self.config.srl_in_train:
+                self.criterion.train()
+            else:
+                self.criterion.eval()
+
+            # self.criterion.eval()
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.criterion(output, target)
@@ -331,7 +336,7 @@ class Solver(object):
             self.optimizer.step()
 
             # srl
-            if self.config.srl_start < epoch:
+            if self.config.srl_start < epoch and (not self.config.srl_in_train):
                 self.model.eval()
                 self.criterion.train()
                 val_data, val_target = self.val_loader.next()
