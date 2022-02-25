@@ -74,11 +74,14 @@ def main():
 
     if args.imbalance_rate is not None:
         num_classes = len(args.classes)
-        r = args.imbalance_rate ** (1/(1-num_classes))
+        r = args.imbalance_rate ** (1 / (1 - num_classes))
         sub_sample = []
         for i in range(num_classes):
-            sub_sample.append(r**i)
+            sub_sample.append(r ** i)
         args.sub_sample = sub_sample
+
+    if args.srl_start < args.epoch and args.val_ratio <= 0.:
+        args.srl_in_train = True
 
     # if args.srl and args.val_ratio <= 0.:
     #     args.srl_in_train = True
@@ -171,9 +174,11 @@ class Solver(object):
         test_transform = transforms.Compose([transforms.ToTensor(), normalize])
 
         if self.config.dataset == 'cifar-10':
-            train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
+            train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True,
+                                                     transform=train_transform)
         elif self.config.dataset == 'cifar-100':
-            train_set = torchvision.datasets.CIFAR100(root='./data', train=True, download=True, transform=train_transform)
+            train_set = torchvision.datasets.CIFAR100(root='./data', train=True, download=True,
+                                                      transform=train_transform)
         else:
             raise NotImplementedError
         train_set = self._sub_data(train_set, self.config.classes, self.config.sub_sample)
@@ -203,15 +208,16 @@ class Solver(object):
                                                         shuffle=True)
         self.criterion = nn.CrossEntropyLoss().cuda()
 
-
         if self.config.dataset == 'cifar-10':
             test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
         elif self.config.dataset == 'cifar-100':
-            test_set = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=test_transform)
+            test_set = torchvision.datasets.CIFAR100(root='./data', train=False, download=True,
+                                                     transform=test_transform)
         else:
             raise NotImplementedError
         self._sub_data(test_set, self.config.classes)
-        self.test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=self.config.testBatchSize, shuffle=False)
+        self.test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=self.config.testBatchSize,
+                                                       shuffle=False)
 
     def load_data_srl(self):
         from SampleRateLearning.sampler import SampleRateBatchSampler
@@ -286,7 +292,8 @@ class Solver(object):
             self.optimizer = AdamMW(self.model.parameters(), lr=self.config.lr, weight_decay=0.)
         elif optim == 'rmsprop2':
             from utils.optimizers import RMSprop2
-            self.optimizer = RMSprop2(self.model.parameters(), lr=self.config.lr, alpha=0.999, eps=1e-8, weight_decay=0.)
+            self.optimizer = RMSprop2(self.model.parameters(), lr=self.config.lr, alpha=0.999, eps=1e-8,
+                                      weight_decay=0.)
         else:
             raise NotImplementedError
 
@@ -305,8 +312,6 @@ class Solver(object):
         global_step = (epoch - 1) * iter_num_per_epoch
 
         for batch_num, (data, target) in enumerate(self.train_loader):
-            if self.config.dtype == 'double':
-                data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
 
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
@@ -330,8 +335,6 @@ class Solver(object):
                 self.model.eval()
                 self.criterion.train()
                 val_data, val_target = self.val_loader.next()
-                if self.config.dtype == 'double':
-                    val_data, val_target = val_data.to(dtype=torch.double), val_target.to(dtype=torch.double)
                 val_data, val_target = val_data.cuda(), val_target.cuda()
                 with torch.no_grad():
                     val_output = self.model(val_data)
@@ -343,7 +346,6 @@ class Solver(object):
 
             train_correct += np.sum(prediction[1].cpu().numpy()
                                     == target.cpu().numpy())  # train_correct incremented by one if predicted right
-
 
             # record
             global_step += 1
@@ -371,8 +373,6 @@ class Solver(object):
 
         with torch.no_grad():
             for batch_num, (data, target) in enumerate(self.test_loader):
-                if self.config.dtype == 'double':
-                    data, target = data.to(dtype=torch.double), target.to(dtype=torch.double)
                 data, target = data.cuda(), target.cuda()
                 output = self.model(data)
                 loss = self.criterion(output, target)
@@ -438,8 +438,6 @@ class Solver(object):
         print("Checkpoint saved to {}".format(model_out_path))
 
     def run(self):
-        if self.config.dtype == 'double':
-            torch.set_default_tensor_type(torch.DoubleTensor)
         self.load_data()
         self.load_model()
 
@@ -448,13 +446,13 @@ class Solver(object):
         for epoch in range(1, self.config.epoch + 1):
             self.scheduler.step(epoch)
 
-            if self.config.srl_start+1 == epoch:
+            if self.config.srl_start + 1 == epoch:
                 self.load_data_srl()
 
             if self.config.srl_start < epoch and self.config.srl_lr < 0:
                 cur_lr = self.optimizer.param_groups[0]['lr']
                 # cur_momentum = self.optimizer.param_groups[0]['momentum']
-                self.criterion.optimizer.param_groups[0]['lr'] = cur_lr * 10.#/ (1. - cur_momentum)
+                self.criterion.optimizer.param_groups[0]['lr'] = cur_lr * 10.  # / (1. - cur_momentum)
             print("\n===> epoch: {0}/{1}".format(epoch, self.config.epoch))
             self.train(epoch)
             test_result = self.test(epoch)
