@@ -116,10 +116,12 @@ class SRL_CELoss(nn.Module):
         # losses, labels = self.get_losses(scores, labels)
         labels = labels.to(dtype=torch.long).view(-1)
         if self.precision_super:
-            # scores = scores.softmax(dim=1)
-            # predictions = torch.argmax(scores, dim=1, keepdim=False)
-            # losses = (predictions != labels).to(dtype=torch.float)
-            losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
+            scores = scores.softmax(dim=1)
+            predictions = torch.argmax(scores, dim=1, keepdim=False)
+            losses = (predictions != labels).to(dtype=torch.float)
+
+            # for CE loss criterion
+            #losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
         else:
             raise NotImplementedError
             losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
@@ -139,10 +141,17 @@ class SRL_CELoss(nn.Module):
             # self.val_losses.append(1.-iou)
 
             # CE loss criterion
+            # cur_mask = (labels == i)
+            # cur_losses = losses[cur_mask]
+            # cur_loss = cur_losses.mean()
+            # self.val_losses.append(cur_loss)
+
+            #Recall Criterion
             cur_mask = (labels == i)
             cur_losses = losses[cur_mask]
             cur_loss = cur_losses.mean()
             self.val_losses.append(cur_loss)
+
 
 
             # F1 score criterion
