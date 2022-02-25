@@ -38,9 +38,9 @@ def main():
     parser.add_argument('--arc', default='lenet', type=str, help='architecture name')
     parser.add_argument('--dtype', default='float', type=str, help='dtype of parameters and buffers')
     parser.add_argument('--seed', default=0, type=int, help='rand seed')
+    parser.add_argument("--srl_in_train", action="store_true", help="srl by training but not val samples")
     parser.add_argument('--srl_lr', default=0.001, type=float, help='learning rate of srl')
     parser.add_argument('--srl_optim', default='adamw', type=str, help='the optimizer for srl')
-    parser.add_argument("--srl_precision", '-ssp', action="store_true", help="srl according to soft precision")
     parser.add_argument('--srl_start', default=9999, type=int, help='start srl after which epoch')
     parser.add_argument('--sample_rates', default=None, type=str, help='sample rates in srl')
     parser.add_argument('--val_ratio', default=0., type=float, help='ratio of validation set in the training set')
@@ -229,7 +229,6 @@ class Solver(object):
                                   optim=self.config.srl_optim,
                                   lr=max(self.config.srl_lr, 0),
                                   sample_rates=self.config.sample_rates,
-                                  precision_super=self.config.srl_precision,
                                   ).cuda()
 
     def load_model(self):

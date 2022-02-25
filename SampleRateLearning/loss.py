@@ -17,7 +17,7 @@ def get_rates(alphas):
 
 class SRL_CELoss(nn.Module):
     def __init__(self, sampler: SampleRateBatchSampler, optim='sgd', lr=0.1, momentum=0., weight_decay=0.,
-                 sample_rates=None, precision_super=False):
+                 sample_rates=None):
         if not isinstance(sampler, SampleRateBatchSampler):
             raise TypeError
 
@@ -28,8 +28,6 @@ class SRL_CELoss(nn.Module):
         self.num_classes = len(sampler.sample_agents)
 
         self.alphas = nn.Parameter(torch.zeros(self.num_classes).cuda())
-
-        self.precision_super = precision_super
 
         param_groups = [{'params': [self.alphas]}]
         if optim == "sgd":
@@ -116,16 +114,13 @@ class SRL_CELoss(nn.Module):
     def forward2(self, scores, labels: torch.Tensor):
         # losses, labels = self.get_losses(scores, labels)
         labels = labels.to(dtype=torch.long).view(-1)
-        if self.precision_super:
-            scores = scores.softmax(dim=1)
-            predictions = torch.argmax(scores, dim=1, keepdim=False)
-            losses = (predictions != labels).to(dtype=torch.float)
 
-            # for CE loss criterion
-            #losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
-        else:
-            raise NotImplementedError
-            losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
+        scores = scores.softmax(dim=1)
+        predictions = torch.argmax(scores, dim=1, keepdim=False)
+        losses = (predictions != labels).to(dtype=torch.float)
+
+        # for CE loss criterion
+        #losses = nn.CrossEntropyLoss(reduction='none')(scores, labels)
 
         self.val_losses = []
         for i in range(self.num_classes):
