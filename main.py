@@ -333,10 +333,7 @@ class Solver(object):
                 self.model.eval()
                 self.model.module.final_fc.train()
 
-            if self.config.srl_start < epoch:
-                self.criterion.train()
-            else:
-                self.criterion.eval()
+            self.criterion.eval()
 
             # self.criterion.eval()
             self.optimizer.zero_grad()

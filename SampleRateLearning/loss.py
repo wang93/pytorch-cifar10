@@ -27,7 +27,7 @@ class SRL_CELoss(nn.Module):
 
         self.num_classes = len(sampler.sample_agents)
 
-        self.alphas = nn.Parameter(torch.zeros(self.num_classes).cuda())
+        self.alphas = nn.Parameter(torch.zeros(self.num_classes).cuda(), requires_grad=True)
 
         self.in_train = in_train
 
