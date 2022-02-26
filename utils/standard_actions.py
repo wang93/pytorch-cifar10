@@ -21,8 +21,8 @@ def _random_seed(seed):
 
 
 def prepare_running(opt):
+    print(torch.cuda.is_available())
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join([str(i) for i in eval(opt.gpus)])
-
     sys.stdout = Logger(os.path.join('./exps', opt.exp, 'log_train.txt'))
     print('current commit hash: {}'.format(subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()))
     pprint(opt)
