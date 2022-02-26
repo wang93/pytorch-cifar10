@@ -311,33 +311,33 @@ class Solver(object):
         iter_num_per_epoch = len(self.train_loader)
         global_step = (epoch - 1) * iter_num_per_epoch
 
+        if self.config.srl_start + 1 == epoch:
+            self.model.eval()
+            self.model.module.final_fc.train()
+            for param in self.model.parameters():
+                param.requires_grad = False
+            for param in self.model.module.final_fc.parameters():
+                param.requires_grad = True
+            for pg in self.optimizer.param_groups:
+                pg['params'] = list(filter(lambda p: p.requires_grad, pg['params']))
+
+        elif self.config.srl_start + 1 > epoch:
+            self.model.train()
+        else:
+            self.model.eval()
+            self.model.module.final_fc.train()
+
+        if self.config.srl_start < epoch and self.config.srl_in_train:
+            self.criterion.train()
+        else:
+            self.criterion.eval()
+
         for batch_num, (data, target) in enumerate(self.train_loader):
 
             data, target = data.cuda(), target.cuda()
             global_variables.parse_target(target)
 
             # optimize model params
-            if self.config.srl_start + 1 == epoch:
-                self.model.eval()
-                self.model.module.final_fc.train()
-                for param in self.model.parameters():
-                    param.requires_grad = False
-                for param in self.model.module.final_fc.parameters():
-                    param.requires_grad = True
-                for pg in self.optimizer.param_groups:
-                    pg['params'] = filter(lambda p: p.requires_grad, pg['params'])
-
-            elif self.config.srl_start + 1 > epoch:
-                self.model.train()
-            else:
-                self.model.eval()
-                self.model.module.final_fc.train()
-
-            if self.config.srl_start < epoch and self.config.srl_in_train:
-                self.criterion.train()
-            else:
-                self.criterion.eval()
-
             # self.criterion.eval()
             self.optimizer.zero_grad()
             output = self.model(data)
