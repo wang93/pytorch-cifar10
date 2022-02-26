@@ -327,11 +327,6 @@ class Solver(object):
             self.model.eval()
             self.model.module.final_fc.train()
 
-        if self.config.srl_start < epoch and self.config.srl_in_train:
-            self.criterion.train()
-        else:
-            self.criterion.eval()
-
         for batch_num, (data, target) in enumerate(self.train_loader):
 
             data, target = data.cuda(), target.cuda()
@@ -339,6 +334,11 @@ class Solver(object):
 
             # optimize model params
             # self.criterion.eval()
+            if self.config.srl_start < epoch and self.config.srl_in_train:
+                self.criterion.train()
+            else:
+                self.criterion.eval()
+
             self.optimizer.zero_grad()
             output = self.model(data)
             loss = self.criterion(output, target)
