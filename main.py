@@ -331,7 +331,7 @@ class Solver(object):
                 self.model.train()
 
             # self.criterion.eval()
-            if self.config.srl_start < epoch and self.config.srl_in_train:
+            if self.config.srl_start + 1 <= epoch and self.config.srl_in_train:
                 self.criterion.train()
             else:
                 self.criterion.eval()
