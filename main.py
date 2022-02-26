@@ -317,13 +317,23 @@ class Solver(object):
             global_variables.parse_target(target)
 
             # optimize model params
-            if self.config.srl_start < epoch:
+            if self.config.srl_start + 1 == epoch:
                 self.model.eval()
                 self.model.module.final_fc.train()
-            else:
-                self.model.train()
+                for param in self.model.parameters():
+                    param.requires_grad = False
+                for param in self.model.module.final_fc.parameters():
+                    param.requires_grad = True
+                for pg in self.optimizer.param_groups:
+                    pg['params'] = filter(lambda p: p.requires_grad, pg['params'])
 
-            if self.config.srl_start < epoch and self.config.srl_in_train:
+            elif self.config.srl_start + 1 > epoch:
+                self.model.train()
+            else:
+                self.model.eval()
+                self.model.module.final_fc.train()
+
+            if self.config.srl_start < epoch:
                 self.criterion.train()
             else:
                 self.criterion.eval()
@@ -458,6 +468,7 @@ class Solver(object):
                 cur_lr = self.optimizer.param_groups[0]['lr']
                 # cur_momentum = self.optimizer.param_groups[0]['momentum']
                 self.criterion.optimizer.param_groups[0]['lr'] = cur_lr * 10.  # / (1. - cur_momentum)
+
             print("\n===> epoch: {0}/{1}".format(epoch, self.config.epoch))
             self.train(epoch)
             test_result = self.test(epoch)
