@@ -324,7 +324,7 @@ class Solver(object):
             global_variables.parse_target(target)
 
             # optimize model params
-            if self.config.srl_start + 1 <= epoch:
+            if self.config.srl_start + 1 <= epoch and (self.config.sample_rates is not None):
                 self.model.eval()
                 # self.model.module.final_fc.train()
             else:
