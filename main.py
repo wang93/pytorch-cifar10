@@ -311,13 +311,13 @@ class Solver(object):
         iter_num_per_epoch = len(self.train_loader)
         global_step = (epoch - 1) * iter_num_per_epoch
 
-        if self.config.srl_start + 1 == epoch:
-            for param in self.model.parameters():
-                param.requires_grad = False
-            for param in self.model.module.final_fc.parameters():
-                param.requires_grad = True
-            for pg in self.optimizer.param_groups:
-                pg['params'] = list(filter(lambda p: p.requires_grad, pg['params']))
+        # if self.config.srl_start + 1 == epoch:
+        #     for param in self.model.parameters():
+        #         param.requires_grad = False
+        #     for param in self.model.module.final_fc.parameters():
+        #         param.requires_grad = True
+        #     for pg in self.optimizer.param_groups:
+        #         pg['params'] = list(filter(lambda p: p.requires_grad, pg['params']))
 
         for batch_num, (data, target) in enumerate(self.train_loader):
             data, target = data.cuda(), target.cuda()
@@ -326,7 +326,7 @@ class Solver(object):
             # optimize model params
             if self.config.srl_start + 1 <= epoch:
                 self.model.eval()
-                self.model.module.final_fc.train()
+                # self.model.module.final_fc.train()
             else:
                 self.model.train()
 
